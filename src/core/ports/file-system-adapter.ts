@@ -174,3 +174,12 @@ export interface FileSystemAdapter {
    */
   forgetDirectory(accessKey: string): Promise<void>;
 }
+
+/**
+ * Minimal file-system capability required by the folder-connection workflow.
+ *
+ * Depending on this narrower contract prevents the application service from
+ * gaining access to scanning, reading, or file-opening operations that it
+ * does not need during directory selection.
+ */
+export type DirectorySelectionAdapter = Pick<FileSystemAdapter, 'platform' | 'selectDirectory'>;

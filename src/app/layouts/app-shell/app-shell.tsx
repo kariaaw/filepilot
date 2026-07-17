@@ -4,6 +4,7 @@ import {
   Clock,
   Copy,
   Folder,
+  FolderPlus,
   HardDrive,
   Home,
   Search,
@@ -57,6 +58,9 @@ const NAVIGATION_ITEMS: readonly NavigationItem[] = [
 
 interface AppShellProps {
   activeView: AppView;
+  connectedFolderCount: number;
+  isAddingFolder: boolean;
+  onAddFolder: () => void;
   onNavigate: (view: AppView) => void;
   children: ReactNode;
 }
@@ -67,8 +71,20 @@ interface AppShellProps {
  * The shell owns only global navigation and layout. Individual feature
  * pages remain responsible for their own content and business behavior.
  */
-export function AppShell({ activeView, onNavigate, children }: AppShellProps): React.JSX.Element {
+export function AppShell({
+  activeView,
+  connectedFolderCount,
+  isAddingFolder,
+  onAddFolder,
+  onNavigate,
+  children,
+}: AppShellProps): React.JSX.Element {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const storageDescription =
+    connectedFolderCount === 0
+      ? 'No folders connected'
+      : `${connectedFolderCount} ${connectedFolderCount === 1 ? 'folder' : 'folders'} connected`;
 
   return (
     <div className={styles.shell} data-sidebar-collapsed={isSidebarCollapsed}>
@@ -135,7 +151,7 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps): R
 
             <span className={styles.storageContent}>
               <span className={styles.storageTitle}>Local storage</span>
-              <span className={styles.storageDescription}>No folders indexed</span>
+              <span className={styles.storageDescription}>{storageDescription}</span>
             </span>
           </div>
 
@@ -168,10 +184,11 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps): R
 
             <Button
               variant="primary"
-              onClick={() => {
-                onNavigate('library');
-              }}
+              isLoading={isAddingFolder}
+              loadingLabel="Selecting folder"
+              onClick={onAddFolder}
             >
+              <FolderPlus aria-hidden="true" />
               Add folder
             </Button>
 

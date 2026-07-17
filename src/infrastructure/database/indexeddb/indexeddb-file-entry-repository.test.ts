@@ -310,4 +310,108 @@ describe('IndexedDbFileEntryRepository', () => {
 
     await expect(repository.getById('source-2-document')).resolves.not.toBeNull();
   });
+  it('atomically replaces every entry belonging to one source', async () => {
+    await repository.saveMany([
+      createFileEntry({
+        id: 'stale-source-1-file',
+        sourceId: 'source-1',
+        name: 'stale.txt',
+        relativePath: 'stale.txt',
+        extension: 'txt',
+        mimeType: 'text/plain',
+        category: 'text',
+      }),
+      createFileEntry({
+        id: 'preserved-source-2-file',
+        sourceId: 'source-2',
+        name: 'preserved.pdf',
+        relativePath: 'preserved.pdf',
+      }),
+    ]);
+
+    await repository.replaceForSource('source-1', [
+      createFileEntry({
+        id: 'replacement-directory',
+        sourceId: 'source-1',
+        parentId: null,
+        name: 'Projects',
+        relativePath: 'Projects',
+        kind: 'directory',
+        extension: null,
+        mimeType: null,
+        category: 'other',
+        sizeBytes: 0,
+      }),
+      createFileEntry({
+        id: 'replacement-file',
+        sourceId: 'source-1',
+        parentId: 'replacement-directory',
+        name: 'README.md',
+        relativePath: 'Projects/README.md',
+        extension: 'md',
+        mimeType: 'text/markdown',
+        category: 'text',
+      }),
+    ]);
+
+    const sourceOneEntries = await repository.find({
+      sourceId: 'source-1',
+    });
+
+    expect(sourceOneEntries.items.map((entry) => entry.id)).toEqual([
+      'replacement-directory',
+      'replacement-file',
+    ]);
+
+    await expect(repository.getById('stale-source-1-file')).resolves.toBeNull();
+
+    await expect(repository.getById('preserved-source-2-file')).resolves.not.toBeNull();
+  });
+
+  it('clears a source index when the replacement collection is empty', async () => {
+    await repository.saveMany([
+      createFileEntry({
+        id: 'source-1-file',
+        sourceId: 'source-1',
+      }),
+      createFileEntry({
+        id: 'source-2-file',
+        sourceId: 'source-2',
+      }),
+    ]);
+
+    await repository.replaceForSource('source-1', []);
+
+    await expect(
+      repository.count({
+        sourceId: 'source-1',
+      }),
+    ).resolves.toBe(0);
+
+    await expect(
+      repository.count({
+        sourceId: 'source-2',
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it('rejects mismatched replacement entries without deleting existing data', async () => {
+    const existingEntry = createFileEntry({
+      id: 'existing-source-1-file',
+      sourceId: 'source-1',
+    });
+
+    await repository.save(existingEntry);
+
+    await expect(
+      repository.replaceForSource('source-1', [
+        createFileEntry({
+          id: 'wrong-source-file',
+          sourceId: 'source-2',
+        }),
+      ]),
+    ).rejects.toThrow('Every replacement entry must belong to the requested library source.');
+
+    await expect(repository.getById(existingEntry.id)).resolves.toEqual(existingEntry);
+  });
 });

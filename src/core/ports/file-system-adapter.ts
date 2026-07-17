@@ -183,3 +183,8 @@ export interface FileSystemAdapter {
  * does not need during directory selection.
  */
 export type DirectorySelectionAdapter = Pick<FileSystemAdapter, 'platform' | 'selectDirectory'>;
+
+/**
+ * Minimal file-system capability required by directory-indexing workflows.
+ */
+export type DirectoryScanAdapter = Pick<FileSystemAdapter, 'platform' | 'scanDirectory'>;

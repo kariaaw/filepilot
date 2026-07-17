@@ -6,3 +6,14 @@ export {
   TauriDirectorySelectionAdapter,
   type TauriDirectorySelectionDependencies,
 } from './tauri-directory-selection-adapter';
+
+export {
+  TauriDirectoryScanAdapter,
+  type TauriDirectoryScanDependencies,
+  type TauriNativeDirectoryEntry,
+  type TauriNativeFileInfo,
+} from './tauri-directory-scan-adapter';
+
+export { TauriLibrarySourceAccessPreparer } from './tauri-library-source-access-preparer';
+
+export { TauriNativePathRegistry } from './tauri-native-path-registry';

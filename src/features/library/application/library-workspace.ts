@@ -4,6 +4,11 @@ import type {
   ConnectLibrarySource,
   ConnectLibrarySourceResult,
 } from '@/features/library/application/connect-library-source';
+import type {
+  IndexLibrarySource,
+  IndexLibrarySourceOptions,
+  IndexLibrarySourceResult,
+} from '@/features/library/application/index-library-source';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAXIMUM_PAGE_SIZE = 500;
@@ -18,9 +23,15 @@ export type LibrarySourceListingRepository = Pick<LibrarySourceRepository, 'find
  */
 export type LibrarySourceConnectionWorkflow = Pick<ConnectLibrarySource, 'execute'>;
 
+/**
+ * Narrow indexing capability consumed by the presentation-facing facade.
+ */
+export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
+
 export interface LibraryWorkspaceDependencies {
   librarySourceRepository: LibrarySourceListingRepository;
   connectLibrarySource: LibrarySourceConnectionWorkflow;
+  indexLibrarySource: LibrarySourceIndexingWorkflow;
 
   /**
    * Smaller page sizes are useful for tests while production uses a
@@ -36,6 +47,10 @@ export interface LibraryWorkspaceSnapshot {
 
 export interface LibraryConnectionSnapshot extends LibraryWorkspaceSnapshot {
   connection: ConnectLibrarySourceResult;
+}
+
+export interface LibraryIndexingSnapshot extends LibraryWorkspaceSnapshot {
+  indexing: IndexLibrarySourceResult;
 }
 
 /**
@@ -108,6 +123,23 @@ export class LibraryWorkspace {
 
     return {
       connection,
+      ...snapshot,
+    };
+  }
+
+  /**
+   * Indexes one connected source and returns the refreshed Library state.
+   */
+  async indexSource(
+    sourceId: string,
+    options: IndexLibrarySourceOptions = {},
+  ): Promise<LibraryIndexingSnapshot> {
+    const indexing = await this.dependencies.indexLibrarySource.execute(sourceId, options);
+
+    const snapshot = await this.loadSources();
+
+    return {
+      indexing,
       ...snapshot,
     };
   }

@@ -8,3 +8,12 @@ export {
   type ConnectLibrarySourceResult,
   type LibrarySourceConnectionRepository,
 } from './connect-library-source';
+
+export {
+  LibraryWorkspace,
+  type LibraryConnectionSnapshot,
+  type LibrarySourceConnectionWorkflow,
+  type LibrarySourceListingRepository,
+  type LibraryWorkspaceDependencies,
+  type LibraryWorkspaceSnapshot,
+} from './library-workspace';

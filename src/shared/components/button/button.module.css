@@ -1,0 +1,151 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+/**
+ * Button sizes use fixed heights so controls align consistently in toolbars,
+ * dialogs, forms, and compact desktop layouts.
+ */
+.small {
+  min-height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+}
+
+.medium {
+  min-height: 2.5rem;
+  padding: 0 var(--space-4);
+  font-size: 0.875rem;
+}
+
+.large {
+  min-height: 3rem;
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-lg);
+  font-size: 0.9375rem;
+}
+
+/**
+ * The primary variant is reserved for the most important action in a
+ * section, such as adding a folder or confirming an operation.
+ */
+.primary {
+  background: var(--color-brand-600);
+  color: var(--color-text-inverse);
+  box-shadow: 0 6px 16px rgb(26 102 245 / 22%);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-brand-700);
+  box-shadow: 0 8px 20px rgb(26 102 245 / 28%);
+}
+
+/**
+ * Secondary actions remain visible without competing with the primary action.
+ */
+.secondary {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+/**
+ * Ghost buttons are suitable for toolbars, navigation, and compact actions.
+ */
+.ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/**
+ * Destructive actions use a dedicated semantic color rather than relying on
+ * the brand palette.
+ */
+.danger {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+  box-shadow: 0 6px 16px rgb(209 67 67 / 20%);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
+
+/**
+ * Full-width buttons are useful inside mobile layouts and narrow dialogs.
+ */
+.fullWidth {
+  width: 100%;
+}
+
+/**
+ * Loading buttons retain their original width so surrounding layouts do not
+ * shift while an asynchronous operation is running.
+ */
+.loading {
+  cursor: progress;
+}
+
+.loadingContent {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  width: 1rem;
+  height: 1rem;
+  border: 0.125rem solid currentcolor;
+  border-right-color: transparent;
+  border-radius: var(--radius-full);
+  animation: button-spin 700ms linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

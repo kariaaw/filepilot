@@ -1,6 +1,19 @@
+import { invoke } from '@tauri-apps/api/core';
+
 import type { LibrarySource } from '@/core/entities/library-source';
 import type { LibrarySourceAccessPreparer } from '@/features/library/application/index-library-source';
 import { TauriNativePathRegistry } from '@/infrastructure/file-system/tauri/tauri-native-path-registry';
+
+export interface TauriLibrarySourceAccessDependencies {
+  restoreRecursiveScope: (nativePath: string) => Promise<void>;
+}
+
+const defaultDependencies: TauriLibrarySourceAccessDependencies = {
+  restoreRecursiveScope: (nativePath) =>
+    invoke<void>('restore_library_source_scope', {
+      path: nativePath,
+    }),
+};
 
 function createCancellationError(): Error {
   const error = new Error('Library source access preparation was cancelled.');
@@ -17,16 +30,16 @@ function throwIfCancelled(signal?: AbortSignal): void {
 }
 
 /**
- * Restores the infrastructure-only native path association for a persisted
- * Tauri library source before file-system operations begin.
- *
- * Operating-system permissions are restored separately by Tauri's persisted
- * scope plugin. This preparer restores FilePilot's access-key-to-path mapping.
+ * Restores both the native path association and recursive Tauri file-system
+ * scope before indexing a persisted library source.
  */
 export class TauriLibrarySourceAccessPreparer implements LibrarySourceAccessPreparer {
   readonly platform = 'tauri' as const;
 
-  constructor(private readonly nativePathRegistry: TauriNativePathRegistry) {}
+  constructor(
+    private readonly nativePathRegistry: TauriNativePathRegistry,
+    private readonly dependencies: TauriLibrarySourceAccessDependencies = defaultDependencies,
+  ) {}
 
   async prepareSource(source: LibrarySource, signal?: AbortSignal): Promise<void> {
     throwIfCancelled(signal);
@@ -35,8 +48,10 @@ export class TauriLibrarySourceAccessPreparer implements LibrarySourceAccessPrep
       throw new Error('Only Tauri library sources can be prepared by the Tauri access preparer.');
     }
 
-    this.nativePathRegistry.register(source.id, source.displayPath);
+    await this.dependencies.restoreRecursiveScope(source.displayPath);
 
     throwIfCancelled(signal);
+
+    this.nativePathRegistry.register(source.id, source.displayPath);
   }
 }

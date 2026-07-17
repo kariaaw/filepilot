@@ -26,7 +26,48 @@ export interface LibraryWorkspaceViewState {
 
 function resolveErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message.trim()) {
-    return error.message;
+    return error.message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const errorRecord = error as Record<string, unknown>;
+
+    for (const key of ['message', 'error', 'cause', 'code']) {
+      const value = errorRecord[key];
+
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+    }
+
+    try {
+      const serializedError = JSON.stringify(error);
+
+      if (serializedError && serializedError !== '{}') {
+        return serializedError;
+      }
+    } catch {
+      // Continue to the generic string conversion.
+    }
+  }
+
+  try {
+    const convertedError = String(error).trim();
+
+    if (
+      convertedError &&
+      convertedError !== '[object Object]' &&
+      convertedError !== 'undefined' &&
+      convertedError !== 'null'
+    ) {
+      return convertedError;
+    }
+  } catch {
+    return fallbackMessage;
   }
 
   return fallbackMessage;

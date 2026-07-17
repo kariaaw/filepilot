@@ -47,6 +47,7 @@ const defaultDependencies: TauriDirectorySelectionDependencies = {
     open({
       directory: true,
       multiple: false,
+      recursive: true,
     }),
 
   getBasename: basename,

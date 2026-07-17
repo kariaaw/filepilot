@@ -578,22 +578,13 @@
 }
 
 .library-source__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
   margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
-}
-
-.library-source__actions button {
-  flex-shrink: 0;
-}
-
-.library-source__actions button svg {
-  width: 1rem;
-  height: 1rem;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-subtle);
 }
 
 .library-source__last-indexed {
@@ -601,23 +592,46 @@
 }
 
 .library-source__last-indexed span,
-.library-source__last-indexed strong {
+.library-source__last-indexed strong,
+.library-source__last-indexed time {
   display: block;
 }
 
 .library-source__last-indexed span {
   color: var(--color-text-tertiary);
   font-size: 0.6875rem;
-  font-weight: 650;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
 }
 
-.library-source__last-indexed strong {
+.library-source__last-indexed strong,
+.library-source__last-indexed time {
   margin-top: var(--space-1);
-  overflow: hidden;
   color: var(--color-text-primary);
-  font-size: 0.75rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.library-source__index-button {
+  min-height: 2.75rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.library-source__index-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.library-source__index-button svg {
+  width: 1.0625rem;
+  height: 1.0625rem;
 }
 
 .overview__source-list {
@@ -685,15 +699,6 @@
     grid-template-columns: 1fr;
   }
 
-  .library-source__actions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .library-source__actions button {
-    width: 100%;
-  }
-
   .overview__source-row {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -708,4 +713,31 @@
   .workspace__loading-indicator {
     animation-duration: 1.5s;
   }
+}
+
+.library-source__index-button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+/* Keep every library source card equal in height within the same grid row. */
+.library-source-grid {
+  align-items: stretch;
+}
+
+.library-source {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+.library-source__actions {
+  margin-top: auto;
+}
+
+.library-source__last-indexed {
+  min-height: 3.25rem;
 }

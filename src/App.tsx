@@ -428,8 +428,13 @@ function formatLastIndexed(lastScannedAtMs: number | null): string {
   }
 
   return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
+    weekday: 'short',
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   }).format(new Date(lastScannedAtMs));
 }
 
@@ -484,12 +489,21 @@ function LibrarySourceCard({
       <div className="library-source__actions">
         <div className="library-source__last-indexed">
           <span>Last indexed</span>
-          <strong>{formatLastIndexed(source.lastScannedAtMs)}</strong>
+
+          {source.lastScannedAtMs === null ? (
+            <strong>Not indexed yet</strong>
+          ) : (
+            <time dateTime={new Date(source.lastScannedAtMs).toISOString()}>
+              {formatLastIndexed(source.lastScannedAtMs)}
+            </time>
+          )}
         </div>
 
         <Button
-          size="small"
-          variant="secondary"
+          className="library-source__index-button"
+          size="medium"
+          variant="primary"
+          fullWidth
           disabled={source.access !== 'available'}
           isLoading={isIndexing}
           loadingLabel={`Indexing ${source.name}`}
@@ -498,7 +512,7 @@ function LibrarySourceCard({
           }}
         >
           <RefreshCw aria-hidden="true" />
-          {hasBeenIndexed ? 'Re-index' : 'Index folder'}
+          {hasBeenIndexed ? 'Refresh index' : 'Index now'}
         </Button>
       </div>
     </article>

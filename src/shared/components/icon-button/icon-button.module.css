@@ -1,0 +1,130 @@
+.iconButton {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    color var(--duration-fast) var(--ease-standard),
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard),
+    transform var(--duration-fast) var(--ease-standard);
+}
+
+.iconButton:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.iconButton:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/**
+ * Fixed square dimensions keep toolbar buttons aligned even when their
+ * icons use different visual proportions.
+ */
+.small {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-sm);
+}
+
+.medium {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.large {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--radius-lg);
+}
+
+/**
+ * Ghost buttons are the default choice for dense navigation and toolbars.
+ */
+.ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/**
+ * Secondary buttons provide stronger separation from surrounding content.
+ */
+.secondary {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.secondary:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+/**
+ * Brand buttons are used for compact primary actions.
+ */
+.primary {
+  background: var(--color-brand-600);
+  color: var(--color-text-inverse);
+  box-shadow: 0 6px 16px rgb(26 102 245 / 22%);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--color-brand-700);
+}
+
+/**
+ * Danger buttons are reserved for destructive compact actions.
+ */
+.danger {
+  background: var(--color-danger-subtle);
+  color: var(--color-danger);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+
+/**
+ * Active toolbar controls remain visibly selected without requiring
+ * consumers to define custom component styles.
+ */
+.active {
+  border-color: var(--color-brand-200);
+  background: var(--color-surface-active);
+  color: var(--color-text-brand);
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.icon > svg {
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.9;
+}

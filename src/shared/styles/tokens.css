@@ -1,0 +1,142 @@
+/**
+ * FilePilot design tokens.
+ *
+ * Components should consume these semantic variables instead of hard-coded
+ * colors and sizes. This keeps the interface consistent and makes future
+ * themes or branding changes significantly easier.
+ */
+:root {
+  color-scheme: light;
+
+  /* Typography */
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Brand */
+  --color-brand-50: #eef7ff;
+  --color-brand-100: #d9edff;
+  --color-brand-200: #bce0ff;
+  --color-brand-300: #8ecbff;
+  --color-brand-400: #59abff;
+  --color-brand-500: #3388ff;
+  --color-brand-600: #1a66f5;
+  --color-brand-700: #1451e1;
+  --color-brand-800: #1742b6;
+  --color-brand-900: #193b8f;
+
+  /* Semantic surfaces */
+  --color-background: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-surface-active: #e8f1ff;
+
+  /* Semantic text */
+  --color-text-primary: #142033;
+  --color-text-secondary: #526176;
+  --color-text-tertiary: #8491a3;
+  --color-text-inverse: #ffffff;
+  --color-text-brand: var(--color-brand-700);
+
+  /* Borders */
+  --color-border: #e3e8ef;
+  --color-border-strong: #cad2dd;
+  --color-border-focus: var(--color-brand-500);
+
+  /* Status colors */
+  --color-success: #16845b;
+  --color-success-subtle: #e9f8f1;
+  --color-warning: #b66a09;
+  --color-warning-subtle: #fff5df;
+  --color-danger: #d14343;
+  --color-danger-subtle: #fff0f0;
+  --color-info: #2878d4;
+  --color-info-subtle: #edf6ff;
+
+  /* Overlay */
+  --color-overlay: rgb(15 23 42 / 52%);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.75rem;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 6%);
+  --shadow-md: 0 12px 28px rgb(15 23 42 / 8%), 0 2px 8px rgb(15 23 42 / 5%);
+  --shadow-lg: 0 24px 64px rgb(15 23 42 / 14%), 0 8px 24px rgb(15 23 42 / 8%);
+
+  /* Layout */
+  --sidebar-width: 17rem;
+  --topbar-height: 4.5rem;
+  --content-max-width: 100rem;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 320ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1.2);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px rgb(51 136 255 / 25%);
+}
+
+/**
+ * The dark theme uses the same semantic token names.
+ *
+ * Components therefore remain theme-independent and require no separate
+ * dark-mode selectors.
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-background: #0d121c;
+  --color-surface: #131a26;
+  --color-surface-subtle: #171f2c;
+  --color-surface-elevated: #1a2331;
+  --color-surface-hover: #202b3a;
+  --color-surface-active: #172d4c;
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #aeb9c8;
+  --color-text-tertiary: #778397;
+  --color-text-inverse: #08111f;
+  --color-text-brand: #76b7ff;
+
+  --color-border: #273244;
+  --color-border-strong: #38465b;
+  --color-border-focus: #5aa6ff;
+
+  --color-success: #54d6a2;
+  --color-success-subtle: #12372c;
+  --color-warning: #f6b95e;
+  --color-warning-subtle: #3b2c13;
+  --color-danger: #ff8585;
+  --color-danger-subtle: #402020;
+  --color-info: #74b9ff;
+  --color-info-subtle: #172e48;
+
+  --color-overlay: rgb(2 6 23 / 72%);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 18%);
+  --shadow-md: 0 12px 28px rgb(0 0 0 / 28%), 0 2px 8px rgb(0 0 0 / 20%);
+  --shadow-lg: 0 24px 64px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 28%);
+}

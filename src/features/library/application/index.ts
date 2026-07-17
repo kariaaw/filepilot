@@ -17,3 +17,11 @@ export {
   type LibraryWorkspaceDependencies,
   type LibraryWorkspaceSnapshot,
 } from './library-workspace';
+
+export {
+  BuildIndexedFileEntry,
+  createStableFileEntryId,
+  type BuildIndexedFileEntryDependencies,
+  type BuildIndexedFileEntryInput,
+  type FileEntryIdFactory,
+} from './build-indexed-file-entry';

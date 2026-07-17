@@ -6,3 +6,5 @@ export {
   TauriDirectorySelectionAdapter,
   type TauriDirectorySelectionDependencies,
 } from './tauri-directory-selection-adapter';
+
+export { TauriNativePathRegistry } from './tauri-native-path-registry';

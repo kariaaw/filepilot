@@ -6,6 +6,7 @@ import type {
   DirectorySelectionAdapter,
   SelectedDirectory,
 } from '@/core/ports/file-system-adapter';
+import { TauriNativePathRegistry } from '@/infrastructure/file-system/tauri/tauri-native-path-registry';
 
 const ACCESS_KEY_PREFIX = 'tauri-directory:';
 
@@ -55,16 +56,15 @@ const defaultDependencies: TauriDirectorySelectionDependencies = {
 /**
  * Tauri implementation of FilePilot's directory-selection capability.
  *
- * Native paths remain inside this infrastructure adapter. Application and
- * domain layers receive a stable opaque key plus user-facing metadata.
+ * Native paths remain inside infrastructure. Application and domain layers
+ * receive a stable opaque key plus user-facing metadata.
  */
 export class TauriDirectorySelectionAdapter implements DirectorySelectionAdapter {
   readonly platform = 'tauri' as const;
 
-  private readonly nativePathsByAccessKey = new Map<string, string>();
-
   constructor(
     private readonly dependencies: TauriDirectorySelectionDependencies = defaultDependencies,
+    private readonly nativePathRegistry = new TauriNativePathRegistry(),
   ) {}
 
   async selectDirectory(): Promise<SelectedDirectory | null> {
@@ -93,7 +93,7 @@ export class TauriDirectorySelectionAdapter implements DirectorySelectionAdapter
 
     const name = selectedBasename.trim() || 'Root directory';
 
-    this.nativePathsByAccessKey.set(accessKey, selection);
+    this.nativePathRegistry.register(accessKey, selection);
 
     return {
       accessKey,
@@ -105,12 +105,20 @@ export class TauriDirectorySelectionAdapter implements DirectorySelectionAdapter
   }
 
   /**
-   * Resolves an opaque access key inside the infrastructure boundary.
+   * Restores a path association from locally persisted LibrarySource metadata.
    *
-   * Persistent reconnection will later move this association into a dedicated
-   * local native-path registry rather than exposing paths to the domain layer.
+   * The Tauri persisted-scope plugin separately restores operating-system
+   * permissions for paths previously selected through the native dialog.
    */
+  restoreNativePath(accessKey: string, nativePath: string): void {
+    this.nativePathRegistry.register(accessKey, nativePath);
+  }
+
   resolveNativePath(accessKey: string): string | null {
-    return this.nativePathsByAccessKey.get(accessKey) ?? null;
+    return this.nativePathRegistry.resolve(accessKey);
+  }
+
+  forgetNativePath(accessKey: string): void {
+    this.nativePathRegistry.forget(accessKey);
   }
 }

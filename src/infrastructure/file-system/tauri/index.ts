@@ -14,4 +14,6 @@ export {
   type TauriNativeFileInfo,
 } from './tauri-directory-scan-adapter';
 
+export { TauriLibrarySourceAccessPreparer } from './tauri-library-source-access-preparer';
+
 export { TauriNativePathRegistry } from './tauri-native-path-registry';

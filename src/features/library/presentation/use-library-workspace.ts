@@ -8,17 +8,41 @@ export interface LibraryWorkspaceViewState {
   total: number;
   isLoading: boolean;
   isConnecting: boolean;
+
+  /**
+   * Contains the IDs of sources currently being indexed.
+   *
+   * An array keeps the presentation contract serializable and simple for
+   * React components, while the hook internally uses a Set for fast checks.
+   */
+  indexingSourceIds: readonly string[];
+
   notice: string | null;
   error: string | null;
+
   connectDirectory: () => Promise<void>;
+  indexSource: (sourceId: string) => Promise<void>;
 }
 
-function resolveErrorMessage(error: unknown): string {
+function resolveErrorMessage(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
 
-  return 'FilePilot could not connect the selected folder.';
+  return fallbackMessage;
+}
+
+function createIndexingNotice(source: LibrarySource): string {
+  const fileLabel = source.statistics.fileCount === 1 ? 'file' : 'files';
+
+  const directoryLabel = source.statistics.directoryCount === 1 ? 'folder' : 'folders';
+
+  return [
+    `Folder "${source.name}" was indexed successfully.`,
+    `${source.statistics.fileCount.toLocaleString()} ${fileLabel}`,
+    `and ${source.statistics.directoryCount.toLocaleString()} ${directoryLabel}`,
+    'are ready.',
+  ].join(' ');
 }
 
 /**
@@ -28,17 +52,25 @@ function resolveErrorMessage(error: unknown): string {
  * platform infrastructure directly.
  */
 export function useLibraryWorkspace(
-  workspace: Pick<LibraryWorkspace, 'loadSources' | 'connectDirectory'>,
+  workspace: Pick<LibraryWorkspace, 'loadSources' | 'connectDirectory' | 'indexSource'>,
 ): LibraryWorkspaceViewState {
   const [sources, setSources] = useState<readonly LibrarySource[]>([]);
+
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+
   const [isConnecting, setIsConnecting] = useState(false);
+
+  const [indexingSourceIds, setIndexingSourceIds] = useState<readonly string[]>([]);
+
   const [notice, setNotice] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
 
   const isMountedRef = useRef(false);
   const isConnectingRef = useRef(false);
+
+  const indexingSourceIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -58,7 +90,9 @@ export function useLibraryWorkspace(
         setTotal(snapshot.total);
       } catch (loadError) {
         if (isMountedRef.current) {
-          setError(resolveErrorMessage(loadError));
+          setError(
+            resolveErrorMessage(loadError, 'FilePilot could not load the connected folders.'),
+          );
         }
       } finally {
         if (isMountedRef.current) {
@@ -108,7 +142,9 @@ export function useLibraryWorkspace(
       }
     } catch (connectionError) {
       if (isMountedRef.current) {
-        setError(resolveErrorMessage(connectionError));
+        setError(
+          resolveErrorMessage(connectionError, 'FilePilot could not connect the selected folder.'),
+        );
       }
     } finally {
       isConnectingRef.current = false;
@@ -119,13 +155,58 @@ export function useLibraryWorkspace(
     }
   }, [workspace]);
 
+  const indexSource = useCallback(
+    async (sourceId: string): Promise<void> => {
+      const normalizedSourceId = sourceId.trim();
+
+      if (!normalizedSourceId || indexingSourceIdsRef.current.has(normalizedSourceId)) {
+        return;
+      }
+
+      indexingSourceIdsRef.current.add(normalizedSourceId);
+
+      setIndexingSourceIds([...indexingSourceIdsRef.current]);
+
+      setNotice(null);
+      setError(null);
+
+      try {
+        const snapshot = await workspace.indexSource(normalizedSourceId);
+
+        if (!isMountedRef.current) {
+          return;
+        }
+
+        setSources(snapshot.sources);
+        setTotal(snapshot.total);
+
+        setNotice(createIndexingNotice(snapshot.indexing.source));
+      } catch (indexingError) {
+        if (isMountedRef.current) {
+          setError(
+            resolveErrorMessage(indexingError, 'FilePilot could not index the selected folder.'),
+          );
+        }
+      } finally {
+        indexingSourceIdsRef.current.delete(normalizedSourceId);
+
+        if (isMountedRef.current) {
+          setIndexingSourceIds([...indexingSourceIdsRef.current]);
+        }
+      }
+    },
+    [workspace],
+  );
+
   return {
     sources,
     total,
     isLoading,
     isConnecting,
+    indexingSourceIds,
     notice,
     error,
     connectDirectory,
+    indexSource,
   };
 }

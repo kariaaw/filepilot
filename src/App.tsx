@@ -5,6 +5,7 @@ import {
   Folder,
   FolderPlus,
   HardDrive,
+  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -83,8 +84,17 @@ function formatStorageSize(sizeBytes: number): string {
 function App(): React.JSX.Element {
   const [activeView, setActiveView] = useState<AppView>('overview');
 
-  const { sources, total, isLoading, isConnecting, notice, error, connectDirectory } =
-    useLibraryWorkspace(libraryWorkspace);
+  const {
+    sources,
+    total,
+    isLoading,
+    isConnecting,
+    indexingSourceIds,
+    notice,
+    error,
+    connectDirectory,
+    indexSource,
+  } = useLibraryWorkspace(libraryWorkspace);
 
   const libraryStatistics = useMemo(
     () =>
@@ -105,6 +115,13 @@ function App(): React.JSX.Element {
     setActiveView('library');
     void connectDirectory();
   }, [connectDirectory]);
+
+  const handleIndexSource = useCallback(
+    (sourceId: string) => {
+      void indexSource(sourceId);
+    },
+    [indexSource],
+  );
 
   return (
     <AppShell
@@ -131,9 +148,11 @@ function App(): React.JSX.Element {
           sources={sources}
           isLoading={isLoading}
           isConnecting={isConnecting}
+          indexingSourceIds={indexingSourceIds}
           notice={notice}
           error={error}
           onAddFolder={handleAddFolder}
+          onIndexSource={handleIndexSource}
         />
       ) : (
         <EmptyWorkspacePage content={VIEW_CONTENT[activeView]} />
@@ -288,18 +307,22 @@ interface LibraryPageProps {
   sources: readonly LibrarySource[];
   isLoading: boolean;
   isConnecting: boolean;
+  indexingSourceIds: readonly string[];
   notice: string | null;
   error: string | null;
   onAddFolder: () => void;
+  onIndexSource: (sourceId: string) => void;
 }
 
 function LibraryPage({
   sources,
   isLoading,
   isConnecting,
+  indexingSourceIds,
   notice,
   error,
   onAddFolder,
+  onIndexSource,
 }: LibraryPageProps): React.JSX.Element {
   return (
     <div className="workspace">
@@ -363,7 +386,12 @@ function LibraryPage({
       ) : (
         <section className="library-source-grid" aria-label="Connected folders">
           {sources.map((source) => (
-            <LibrarySourceCard key={source.id} source={source} />
+            <LibrarySourceCard
+              key={source.id}
+              source={source}
+              isIndexing={indexingSourceIds.includes(source.id)}
+              onIndexSource={onIndexSource}
+            />
           ))}
         </section>
       )}
@@ -394,7 +422,29 @@ function SourceSummaryRow({ source }: LibrarySourceProps): React.JSX.Element {
   );
 }
 
-function LibrarySourceCard({ source }: LibrarySourceProps): React.JSX.Element {
+function formatLastIndexed(lastScannedAtMs: number | null): string {
+  if (lastScannedAtMs === null) {
+    return 'Not indexed yet';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(lastScannedAtMs));
+}
+
+interface LibrarySourceCardProps extends LibrarySourceProps {
+  isIndexing: boolean;
+  onIndexSource: (sourceId: string) => void;
+}
+
+function LibrarySourceCard({
+  source,
+  isIndexing,
+  onIndexSource,
+}: LibrarySourceCardProps): React.JSX.Element {
+  const hasBeenIndexed = source.lastScannedAtMs !== null;
+
   return (
     <article className="library-source">
       <div className="library-source__header">
@@ -430,6 +480,27 @@ function LibrarySourceCard({ source }: LibrarySourceProps): React.JSX.Element {
           <dd>{source.syncMode}</dd>
         </div>
       </dl>
+
+      <div className="library-source__actions">
+        <div className="library-source__last-indexed">
+          <span>Last indexed</span>
+          <strong>{formatLastIndexed(source.lastScannedAtMs)}</strong>
+        </div>
+
+        <Button
+          size="small"
+          variant="secondary"
+          disabled={source.access !== 'available'}
+          isLoading={isIndexing}
+          loadingLabel={`Indexing ${source.name}`}
+          onClick={() => {
+            onIndexSource(source.id);
+          }}
+        >
+          <RefreshCw aria-hidden="true" />
+          {hasBeenIndexed ? 'Re-index' : 'Index folder'}
+        </Button>
+      </div>
     </article>
   );
 }

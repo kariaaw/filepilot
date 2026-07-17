@@ -109,6 +109,14 @@ export interface FileEntryRepository {
   saveMany(entries: readonly FileEntry[]): Promise<void>;
 
   /**
+   * Atomically replaces every indexed entry belonging to one source.
+   *
+   * Implementations must delete stale records and insert the supplied entries
+   * inside one transaction so a failed rescan cannot leave a partial library.
+   */
+  replaceForSource(sourceId: string, entries: readonly FileEntry[]): Promise<void>;
+
+  /**
    * Removes one entry by its stable FilePilot identifier.
    */
   deleteById(id: string): Promise<void>;

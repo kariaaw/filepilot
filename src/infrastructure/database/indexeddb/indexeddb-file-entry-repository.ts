@@ -395,6 +395,30 @@ export class IndexedDbFileEntryRepository implements FileEntryRepository {
     });
   }
 
+  public async replaceForSource(sourceId: string, entries: readonly FileEntry[]): Promise<void> {
+    if (!sourceId.trim()) {
+      throw new Error('A source identifier is required when replacing indexed entries.');
+    }
+
+    if (entries.some((entry) => entry.sourceId !== sourceId)) {
+      throw new Error('Every replacement entry must belong to the requested library source.');
+    }
+
+    /*
+     * Convert and validate every entity before opening the transaction.
+     * Invalid data therefore cannot delete an existing source index.
+     */
+    const records = entries.map((entry) => toFileEntryRecord(entry));
+
+    await this.database.transaction('rw', this.database.fileEntries, async () => {
+      await this.database.fileEntries.where('sourceId').equals(sourceId).delete();
+
+      if (records.length > 0) {
+        await this.database.fileEntries.bulkPut(records);
+      }
+    });
+  }
+
   public async deleteById(id: string): Promise<void> {
     await this.database.fileEntries.delete(id);
   }

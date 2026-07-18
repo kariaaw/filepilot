@@ -1,6 +1,11 @@
 import type { LibrarySource } from '@/core/entities/library-source';
 import type { LibrarySourceRepository } from '@/core/ports/library-source-repository';
 import type {
+  BrowseLibraryDirectory,
+  BrowseLibraryDirectoryInput,
+  BrowseLibraryDirectoryResult,
+} from '@/features/library/application/browse-library-directory';
+import type {
   ConnectLibrarySource,
   ConnectLibrarySourceResult,
 } from '@/features/library/application/connect-library-source';
@@ -24,6 +29,11 @@ export type LibrarySourceListingRepository = Pick<LibrarySourceRepository, 'find
 export type LibrarySourceConnectionWorkflow = Pick<ConnectLibrarySource, 'execute'>;
 
 /**
+ * Narrow indexed-directory browsing capability consumed by the workspace.
+ */
+export type LibraryDirectoryBrowsingWorkflow = Pick<BrowseLibraryDirectory, 'execute'>;
+
+/**
  * Narrow indexing capability consumed by the presentation-facing facade.
  */
 export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
@@ -31,6 +41,7 @@ export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
 export interface LibraryWorkspaceDependencies {
   librarySourceRepository: LibrarySourceListingRepository;
   connectLibrarySource: LibrarySourceConnectionWorkflow;
+  browseLibraryDirectory: LibraryDirectoryBrowsingWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
   /**
@@ -125,6 +136,13 @@ export class LibraryWorkspace {
       connection,
       ...snapshot,
     };
+  }
+
+  /**
+   * Loads one level of an indexed source directory.
+   */
+  async browseDirectory(input: BrowseLibraryDirectoryInput): Promise<BrowseLibraryDirectoryResult> {
+    return this.dependencies.browseLibraryDirectory.execute(input);
   }
 
   /**

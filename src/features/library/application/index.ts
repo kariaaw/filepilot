@@ -20,6 +20,7 @@ export {
 export {
   LibraryWorkspace,
   type LibraryConnectionSnapshot,
+  type LibraryDirectoryBrowsingWorkflow,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceListingRepository,
   type LibraryWorkspaceDependencies,

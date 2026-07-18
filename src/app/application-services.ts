@@ -5,6 +5,7 @@ import {
   IndexLibrarySource,
   LibraryWorkspace,
   OpenIndexedEntry,
+  RemoveLibrarySource,
   SearchIndexedEntries,
 } from '@/features/library/application';
 import { IndexedDbFileEntryRepository } from '@/infrastructure/database/indexeddb/indexeddb-file-entry-repository';
@@ -72,6 +73,12 @@ const indexLibrarySource = new IndexLibrarySource({
   buildIndexedFileEntry,
 });
 
+const removeLibrarySource = new RemoveLibrarySource({
+  librarySourceRepository,
+  libraryIndexRepository,
+  sourceAccessForgetter: directorySelectionAdapter,
+});
+
 export const libraryWorkspace = new LibraryWorkspace({
   browseLibraryDirectory,
   connectLibrarySource,
@@ -79,4 +86,5 @@ export const libraryWorkspace = new LibraryWorkspace({
   librarySourceRepository,
   searchIndexedEntries,
   openIndexedEntry,
+  removeLibrarySource,
 });

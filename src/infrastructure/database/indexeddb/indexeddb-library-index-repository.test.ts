@@ -161,6 +161,79 @@ describe('IndexedDbLibraryIndexRepository', () => {
     await expect(sourceRepository.getById('source-1')).resolves.toEqual(emptySource);
   });
 
+  it('atomically deletes one source and all of its indexed entries', async () => {
+    const removedSource = createLibrarySource({
+      id: 'source-to-remove',
+      name: 'Temporary Library',
+    });
+
+    const preservedSource = createLibrarySource({
+      id: 'source-to-keep',
+      name: 'Permanent Library',
+    });
+
+    await sourceRepository.saveMany([removedSource, preservedSource]);
+
+    await fileEntryRepository.saveMany([
+      createFileEntry({
+        id: 'removed-root-file',
+        sourceId: removedSource.id,
+        name: 'temporary.txt',
+        relativePath: 'temporary.txt',
+      }),
+
+      createFileEntry({
+        id: 'removed-nested-file',
+        sourceId: removedSource.id,
+        name: 'nested.txt',
+        relativePath: 'Documents/nested.txt',
+      }),
+
+      createFileEntry({
+        id: 'preserved-file',
+        sourceId: preservedSource.id,
+        name: 'important.txt',
+        relativePath: 'important.txt',
+      }),
+    ]);
+
+    await indexRepository.deleteSourceIndex(removedSource.id);
+
+    await expect(sourceRepository.getById(removedSource.id)).resolves.toBeNull();
+
+    await expect(
+      fileEntryRepository.count({
+        sourceId: removedSource.id,
+      }),
+    ).resolves.toBe(0);
+
+    await expect(sourceRepository.getById(preservedSource.id)).resolves.toEqual(preservedSource);
+
+    await expect(fileEntryRepository.getById('preserved-file')).resolves.not.toBeNull();
+  });
+
+  it('rejects an empty deletion identifier without changing stored data', async () => {
+    const existingSource = createLibrarySource({
+      id: 'existing-source',
+    });
+
+    const existingEntry = createFileEntry({
+      id: 'existing-entry',
+      sourceId: existingSource.id,
+    });
+
+    await sourceRepository.save(existingSource);
+    await fileEntryRepository.save(existingEntry);
+
+    await expect(indexRepository.deleteSourceIndex('   ')).rejects.toThrow(
+      'A library source identifier is required for deletion.',
+    );
+
+    await expect(sourceRepository.getById(existingSource.id)).resolves.toEqual(existingSource);
+
+    await expect(fileEntryRepository.getById(existingEntry.id)).resolves.toEqual(existingEntry);
+  });
+
   it('rejects mismatched entries before changing stored data', async () => {
     const originalSource = createLibrarySource({
       id: 'source-1',

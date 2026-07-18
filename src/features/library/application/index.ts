@@ -23,8 +23,10 @@ export {
   type LibraryDirectoryBrowsingWorkflow,
   type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
+  type LibraryRemovalSnapshot,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceListingRepository,
+  type LibrarySourceRemovalWorkflow,
   type LibraryWorkspaceDependencies,
   type LibraryWorkspaceSnapshot,
 } from './library-workspace';
@@ -67,3 +69,12 @@ export {
   type SearchIndexedEntriesInput,
   type SearchIndexedEntriesResult,
 } from './search-indexed-entries';
+
+export {
+  RemoveLibrarySource,
+  type LibrarySourceAccessForgetter,
+  type LibrarySourceIndexRemovalRepository,
+  type LibrarySourceRemovalLookupRepository,
+  type RemoveLibrarySourceDependencies,
+  type RemoveLibrarySourceResult,
+} from './remove-library-source';

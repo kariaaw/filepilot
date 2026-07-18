@@ -9,4 +9,13 @@ import type { LibrarySource } from '@/core/entities/library-source';
  */
 export interface LibraryIndexRepository {
   replaceSourceIndex(source: LibrarySource, entries: readonly FileEntry[]): Promise<void>;
+
+  /**
+   * Atomically removes one library source and every indexed entry
+   * associated with that source.
+   *
+   * This operation never removes files or directories from the real
+   * operating-system file system.
+   */
+  deleteSourceIndex(sourceId: string): Promise<void>;
 }

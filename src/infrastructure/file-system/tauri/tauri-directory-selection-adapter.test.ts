@@ -61,6 +61,23 @@ describe('TauriDirectorySelectionAdapter', () => {
     expect(adapter.resolveNativePath('missing-access-key')).toBeNull();
   });
 
+  it('forgets a registered native path without touching the directory', async () => {
+    const adapter = new TauriDirectorySelectionAdapter(
+      createDependencies({
+        openDirectory: () => Promise.resolve('/home/karya/Documents'),
+        createAccessKey: () => Promise.resolve('tauri-directory:documents'),
+      }),
+    );
+
+    await adapter.selectDirectory();
+
+    expect(adapter.resolveNativePath('tauri-directory:documents')).toBe('/home/karya/Documents');
+
+    await adapter.forgetDirectory('tauri-directory:documents');
+
+    expect(adapter.resolveNativePath('tauri-directory:documents')).toBeNull();
+  });
+
   it('rejects native selection outside the Tauri environment', async () => {
     const adapter = new TauriDirectorySelectionAdapter(
       createDependencies({

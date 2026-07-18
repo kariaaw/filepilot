@@ -17,11 +17,17 @@ export interface LibraryWorkspaceViewState {
    */
   indexingSourceIds: readonly string[];
 
+  /**
+   * Contains the IDs of sources currently being removed.
+   */
+  removingSourceIds: readonly string[];
+
   notice: string | null;
   error: string | null;
 
   connectDirectory: () => Promise<void>;
   indexSource: (sourceId: string) => Promise<void>;
+  removeSource: (sourceId: string) => Promise<boolean>;
 }
 
 function resolveErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -86,6 +92,13 @@ function createIndexingNotice(source: LibrarySource): string {
   ].join(' ');
 }
 
+function createRemovalNotice(source: LibrarySource): string {
+  return [
+    `Folder "${source.name}" was removed from FilePilot.`,
+    'Its local index was deleted, but files and folders on disk were not changed.',
+  ].join(' ');
+}
+
 /**
  * React presentation adapter for the Library workspace facade.
  *
@@ -93,7 +106,10 @@ function createIndexingNotice(source: LibrarySource): string {
  * platform infrastructure directly.
  */
 export function useLibraryWorkspace(
-  workspace: Pick<LibraryWorkspace, 'loadSources' | 'connectDirectory' | 'indexSource'>,
+  workspace: Pick<
+    LibraryWorkspace,
+    'loadSources' | 'connectDirectory' | 'indexSource' | 'removeSource'
+  >,
 ): LibraryWorkspaceViewState {
   const [sources, setSources] = useState<readonly LibrarySource[]>([]);
 
@@ -104,6 +120,8 @@ export function useLibraryWorkspace(
 
   const [indexingSourceIds, setIndexingSourceIds] = useState<readonly string[]>([]);
 
+  const [removingSourceIds, setRemovingSourceIds] = useState<readonly string[]>([]);
+
   const [notice, setNotice] = useState<string | null>(null);
 
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +130,8 @@ export function useLibraryWorkspace(
   const isConnectingRef = useRef(false);
 
   const indexingSourceIdsRef = useRef(new Set<string>());
+
+  const removingSourceIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -239,15 +259,72 @@ export function useLibraryWorkspace(
     [workspace],
   );
 
+  const removeSource = useCallback(
+    async (sourceId: string): Promise<boolean> => {
+      const normalizedSourceId = sourceId.trim();
+
+      if (!normalizedSourceId || removingSourceIdsRef.current.has(normalizedSourceId)) {
+        return false;
+      }
+
+      if (indexingSourceIdsRef.current.has(normalizedSourceId)) {
+        setNotice(null);
+        setError('Wait for the active indexing operation to finish before removing this folder.');
+
+        return false;
+      }
+
+      removingSourceIdsRef.current.add(normalizedSourceId);
+      setRemovingSourceIds([...removingSourceIdsRef.current]);
+
+      setNotice(null);
+      setError(null);
+
+      try {
+        const snapshot = await workspace.removeSource(normalizedSourceId);
+
+        if (!isMountedRef.current) {
+          return false;
+        }
+
+        setSources(snapshot.sources);
+        setTotal(snapshot.total);
+        setNotice(createRemovalNotice(snapshot.removal.source));
+
+        return true;
+      } catch (removalError) {
+        if (isMountedRef.current) {
+          setError(
+            resolveErrorMessage(
+              removalError,
+              'FilePilot could not remove the selected folder from the Library.',
+            ),
+          );
+        }
+
+        return false;
+      } finally {
+        removingSourceIdsRef.current.delete(normalizedSourceId);
+
+        if (isMountedRef.current) {
+          setRemovingSourceIds([...removingSourceIdsRef.current]);
+        }
+      }
+    },
+    [workspace],
+  );
+
   return {
     sources,
     total,
     isLoading,
     isConnecting,
     indexingSourceIds,
+    removingSourceIds,
     notice,
     error,
     connectDirectory,
     indexSource,
+    removeSource,
   };
 }

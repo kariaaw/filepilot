@@ -16,10 +16,11 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { libraryWorkspace } from '@/app/application-services';
 import { AppShell } from '@/app/layouts/app-shell';
@@ -101,19 +102,29 @@ function formatStorageSize(sizeBytes: number): string {
 function App(): React.JSX.Element {
   const [activeView, setActiveView] = useState<AppView>('overview');
 
+  const [pendingRemovalSource, setPendingRemovalSource] = useState<LibrarySource | null>(null);
+
   const {
     sources,
     total,
     isLoading,
     isConnecting,
     indexingSourceIds,
+    removingSourceIds,
     notice,
     error,
     connectDirectory,
     indexSource,
+    removeSource,
   } = useLibraryWorkspace(libraryWorkspace);
 
   const fileBrowser = useIndexedFileBrowser(libraryWorkspace);
+
+  const {
+    closeBrowser: closeFileBrowser,
+    loadingSourceId: loadingBrowserSourceId,
+    selectedSourceId: selectedBrowserSourceId,
+  } = fileBrowser;
 
   const entryOperations = useIndexedEntryOperations(libraryWorkspace);
 
@@ -146,53 +157,207 @@ function App(): React.JSX.Element {
     [indexSource],
   );
 
+  const isPendingSourceRemovalRunning =
+    pendingRemovalSource !== null && removingSourceIds.includes(pendingRemovalSource.id);
+
+  const handleRemoveSource = useCallback((source: LibrarySource): void => {
+    setPendingRemovalSource(source);
+  }, []);
+
+  const handleCancelSourceRemoval = useCallback((): void => {
+    if (isPendingSourceRemovalRunning) {
+      return;
+    }
+
+    setPendingRemovalSource(null);
+  }, [isPendingSourceRemovalRunning]);
+
+  const handleConfirmSourceRemoval = useCallback(async (): Promise<void> => {
+    const source = pendingRemovalSource;
+
+    if (!source) {
+      return;
+    }
+
+    const wasRemoved = await removeSource(source.id);
+
+    if (!wasRemoved) {
+      setPendingRemovalSource(null);
+      return;
+    }
+
+    const activeBrowserSourceId = selectedBrowserSourceId ?? loadingBrowserSourceId;
+
+    if (activeBrowserSourceId === source.id) {
+      closeFileBrowser();
+    }
+
+    setPendingRemovalSource(null);
+  }, [
+    closeFileBrowser,
+    loadingBrowserSourceId,
+    pendingRemovalSource,
+    removeSource,
+    selectedBrowserSourceId,
+  ]);
+
+  useEffect(() => {
+    if (!pendingRemovalSource || isPendingSourceRemovalRunning) {
+      return;
+    }
+
+    const handleEscapeKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setPendingRemovalSource(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [isPendingSourceRemovalRunning, pendingRemovalSource]);
+
   return (
-    <AppShell
-      activeView={activeView}
-      connectedFolderCount={total}
-      isAddingFolder={isConnecting}
-      searchText={indexedSearch.text}
-      isSearching={indexedSearch.isSearching}
-      onAddFolder={handleAddFolder}
-      onNavigate={setActiveView}
-      onSearchTextChange={indexedSearch.setText}
-      onClearSearch={indexedSearch.clearSearch}
+    <>
+      <AppShell
+        activeView={activeView}
+        connectedFolderCount={total}
+        isAddingFolder={isConnecting}
+        searchText={indexedSearch.text}
+        isSearching={indexedSearch.isSearching}
+        onAddFolder={handleAddFolder}
+        onNavigate={setActiveView}
+        onSearchTextChange={indexedSearch.setText}
+        onClearSearch={indexedSearch.clearSearch}
+      >
+        {indexedSearch.hasSearchText ? (
+          <IndexedSearchResultsPage
+            search={indexedSearch}
+            sources={sources}
+            operations={entryOperations}
+          />
+        ) : activeView === 'overview' ? (
+          <OverviewPage
+            sources={sources}
+            connectedFolderCount={total}
+            indexedFileCount={libraryStatistics.fileCount}
+            indexedStorageBytes={libraryStatistics.totalSizeBytes}
+            isAddingFolder={isConnecting}
+            onAddFolder={handleAddFolder}
+            onOpenLibrary={() => {
+              setActiveView('library');
+            }}
+          />
+        ) : activeView === 'library' ? (
+          <LibraryPage
+            sources={sources}
+            isLoading={isLoading}
+            isConnecting={isConnecting}
+            indexingSourceIds={indexingSourceIds}
+            removingSourceIds={removingSourceIds}
+            notice={notice}
+            error={error}
+            fileBrowser={fileBrowser}
+            entryOperations={entryOperations}
+            onAddFolder={handleAddFolder}
+            onIndexSource={handleIndexSource}
+            onRemoveSource={handleRemoveSource}
+          />
+        ) : (
+          <EmptyWorkspacePage content={VIEW_CONTENT[activeView]} />
+        )}
+      </AppShell>
+
+      <RemoveSourceDialog
+        source={pendingRemovalSource}
+        isRemoving={isPendingSourceRemovalRunning}
+        onCancel={handleCancelSourceRemoval}
+        onConfirm={handleConfirmSourceRemoval}
+      />
+    </>
+  );
+}
+
+interface RemoveSourceDialogProps {
+  source: LibrarySource | null;
+  isRemoving: boolean;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}
+
+function RemoveSourceDialog({
+  source,
+  isRemoving,
+  onCancel,
+  onConfirm,
+}: RemoveSourceDialogProps): React.JSX.Element | null {
+  if (!source) {
+    return null;
+  }
+
+  return (
+    <div
+      className="remove-source-dialog__backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !isRemoving) {
+          onCancel();
+        }
+      }}
     >
-      {indexedSearch.hasSearchText ? (
-        <IndexedSearchResultsPage
-          search={indexedSearch}
-          sources={sources}
-          operations={entryOperations}
-        />
-      ) : activeView === 'overview' ? (
-        <OverviewPage
-          sources={sources}
-          connectedFolderCount={total}
-          indexedFileCount={libraryStatistics.fileCount}
-          indexedStorageBytes={libraryStatistics.totalSizeBytes}
-          isAddingFolder={isConnecting}
-          onAddFolder={handleAddFolder}
-          onOpenLibrary={() => {
-            setActiveView('library');
-          }}
-        />
-      ) : activeView === 'library' ? (
-        <LibraryPage
-          sources={sources}
-          isLoading={isLoading}
-          isConnecting={isConnecting}
-          indexingSourceIds={indexingSourceIds}
-          notice={notice}
-          error={error}
-          fileBrowser={fileBrowser}
-          entryOperations={entryOperations}
-          onAddFolder={handleAddFolder}
-          onIndexSource={handleIndexSource}
-        />
-      ) : (
-        <EmptyWorkspacePage content={VIEW_CONTENT[activeView]} />
-      )}
-    </AppShell>
+      <section
+        className="remove-source-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-source-dialog-title"
+        aria-describedby="remove-source-dialog-description"
+      >
+        <span className="remove-source-dialog__icon" aria-hidden="true">
+          <Trash2 />
+        </span>
+
+        <div className="remove-source-dialog__content">
+          <span className="remove-source-dialog__eyebrow">Remove library source</span>
+
+          <h2 id="remove-source-dialog-title">Remove “{source.name}” from FilePilot?</h2>
+
+          <p id="remove-source-dialog-description">
+            FilePilot will disconnect this folder and permanently delete its locally stored search
+            index.
+          </p>
+
+          <p className="remove-source-dialog__path" title={source.displayPath}>
+            {source.displayPath}
+          </p>
+
+          <div className="remove-source-dialog__safety-note">
+            <ShieldCheck aria-hidden="true" />
+
+            <p>The real folder and every file inside it will remain untouched on your disk.</p>
+          </div>
+        </div>
+
+        <div className="remove-source-dialog__actions">
+          <Button variant="secondary" disabled={isRemoving} autoFocus onClick={onCancel}>
+            Cancel
+          </Button>
+
+          <Button
+            variant="danger"
+            isLoading={isRemoving}
+            loadingLabel={`Removing ${source.name}`}
+            onClick={() => {
+              void onConfirm();
+            }}
+          >
+            <Trash2 aria-hidden="true" />
+            Remove from FilePilot
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -565,12 +730,14 @@ interface LibraryPageProps {
   isLoading: boolean;
   isConnecting: boolean;
   indexingSourceIds: readonly string[];
+  removingSourceIds: readonly string[];
   notice: string | null;
   error: string | null;
   fileBrowser: IndexedFileBrowserViewState;
   entryOperations: IndexedEntryOperationViewState;
   onAddFolder: () => void;
   onIndexSource: (sourceId: string) => void;
+  onRemoveSource: (source: LibrarySource) => void;
 }
 
 function LibraryPage({
@@ -578,12 +745,14 @@ function LibraryPage({
   isLoading,
   isConnecting,
   indexingSourceIds,
+  removingSourceIds,
   notice,
   error,
   fileBrowser,
   entryOperations,
   onAddFolder,
   onIndexSource,
+  onRemoveSource,
 }: LibraryPageProps): React.JSX.Element {
   const activeBrowserSourceId = fileBrowser.selectedSourceId ?? fileBrowser.loadingSourceId;
 
@@ -656,9 +825,11 @@ function LibraryPage({
                 key={source.id}
                 source={source}
                 isIndexing={indexingSourceIds.includes(source.id)}
+                isRemoving={removingSourceIds.includes(source.id)}
                 isBrowsing={fileBrowser.loadingSourceId === source.id}
                 onBrowseSource={fileBrowser.openSource}
                 onIndexSource={onIndexSource}
+                onRemoveSource={onRemoveSource}
               />
             ))}
           </section>
@@ -717,17 +888,21 @@ function formatLastIndexed(lastScannedAtMs: number | null): string {
 
 interface LibrarySourceCardProps extends LibrarySourceProps {
   isIndexing: boolean;
+  isRemoving: boolean;
   isBrowsing: boolean;
   onBrowseSource: (sourceId: string) => Promise<void>;
   onIndexSource: (sourceId: string) => void;
+  onRemoveSource: (source: LibrarySource) => void;
 }
 
 function LibrarySourceCard({
   source,
   isIndexing,
+  isRemoving,
   isBrowsing,
   onBrowseSource,
   onIndexSource,
+  onRemoveSource,
 }: LibrarySourceCardProps): React.JSX.Element {
   const hasBeenIndexed = source.lastScannedAtMs !== null;
 
@@ -786,7 +961,7 @@ function LibrarySourceCard({
             size="medium"
             variant="secondary"
             fullWidth
-            disabled={!hasBeenIndexed || source.access !== 'available'}
+            disabled={!hasBeenIndexed || source.access !== 'available' || isIndexing || isRemoving}
             isLoading={isBrowsing}
             loadingLabel={`Opening ${source.name}`}
             onClick={() => {
@@ -802,7 +977,7 @@ function LibrarySourceCard({
             size="medium"
             variant="primary"
             fullWidth
-            disabled={source.access !== 'available'}
+            disabled={source.access !== 'available' || isBrowsing || isRemoving}
             isLoading={isIndexing}
             loadingLabel={`Indexing ${source.name}`}
             onClick={() => {
@@ -811,6 +986,22 @@ function LibrarySourceCard({
           >
             <RefreshCw aria-hidden="true" />
             {hasBeenIndexed ? 'Refresh index' : 'Index now'}
+          </Button>
+
+          <Button
+            className="library-source__remove-button"
+            size="medium"
+            variant="danger"
+            fullWidth
+            disabled={isIndexing || isBrowsing}
+            isLoading={isRemoving}
+            loadingLabel={`Removing ${source.name}`}
+            onClick={() => {
+              onRemoveSource(source);
+            }}
+          >
+            <Trash2 aria-hidden="true" />
+            Remove folder
           </Button>
         </div>
       </div>

@@ -122,4 +122,12 @@ export class TauriDirectorySelectionAdapter implements DirectorySelectionAdapter
   forgetNativePath(accessKey: string): void {
     this.nativePathRegistry.forget(accessKey);
   }
+
+  /**
+   * Forgets adapter-specific access metadata without modifying the real
+   * operating-system directory or any files contained inside it.
+   */
+  async forgetDirectory(accessKey: string): Promise<void> {
+    this.forgetNativePath(accessKey);
+  }
 }

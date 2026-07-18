@@ -20,6 +20,10 @@ import type {
   OpenIndexedEntryResult,
 } from '@/features/library/application/open-indexed-entry';
 import type {
+  RemoveLibrarySource,
+  RemoveLibrarySourceResult,
+} from '@/features/library/application/remove-library-source';
+import type {
   SearchIndexedEntries,
   SearchIndexedEntriesInput,
   SearchIndexedEntriesResult,
@@ -54,6 +58,11 @@ export type LibraryIndexedEntrySearchWorkflow = Pick<SearchIndexedEntries, 'exec
 export type LibraryIndexedEntryOpeningWorkflow = Pick<OpenIndexedEntry, 'execute'>;
 
 /**
+ * Narrow source-removal capability consumed by the workspace.
+ */
+export type LibrarySourceRemovalWorkflow = Pick<RemoveLibrarySource, 'execute'>;
+
+/**
  * Narrow indexing capability consumed by the presentation-facing facade.
  */
 export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
@@ -64,6 +73,7 @@ export interface LibraryWorkspaceDependencies {
   browseLibraryDirectory: LibraryDirectoryBrowsingWorkflow;
   searchIndexedEntries: LibraryIndexedEntrySearchWorkflow;
   openIndexedEntry: LibraryIndexedEntryOpeningWorkflow;
+  removeLibrarySource: LibrarySourceRemovalWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
   /**
@@ -84,6 +94,10 @@ export interface LibraryConnectionSnapshot extends LibraryWorkspaceSnapshot {
 
 export interface LibraryIndexingSnapshot extends LibraryWorkspaceSnapshot {
   indexing: IndexLibrarySourceResult;
+}
+
+export interface LibraryRemovalSnapshot extends LibraryWorkspaceSnapshot {
+  removal: RemoveLibrarySourceResult;
 }
 
 /**
@@ -179,6 +193,20 @@ export class LibraryWorkspace {
    */
   async openEntry(input: OpenIndexedEntryInput): Promise<OpenIndexedEntryResult> {
     return this.dependencies.openIndexedEntry.execute(input);
+  }
+
+  /**
+   * Disconnects one source and returns the refreshed Library state.
+   */
+  async removeSource(sourceId: string): Promise<LibraryRemovalSnapshot> {
+    const removal = await this.dependencies.removeLibrarySource.execute(sourceId);
+
+    const snapshot = await this.loadSources();
+
+    return {
+      removal,
+      ...snapshot,
+    };
   }
 
   /**

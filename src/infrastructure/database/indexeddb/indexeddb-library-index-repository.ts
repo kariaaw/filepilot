@@ -47,4 +47,27 @@ export class IndexedDbLibraryIndexRepository implements LibraryIndexRepository {
       },
     );
   }
+
+  async deleteSourceIndex(sourceId: string): Promise<void> {
+    const normalizedSourceId = sourceId.trim();
+
+    if (!normalizedSourceId) {
+      throw new Error('A library source identifier is required for deletion.');
+    }
+
+    /*
+     * Source metadata and indexed entries share one transaction so callers
+     * can never observe an orphaned source or orphaned entry collection.
+     */
+    await this.database.transaction(
+      'rw',
+      this.database.fileEntries,
+      this.database.librarySources,
+      async () => {
+        await this.database.fileEntries.where('sourceId').equals(normalizedSourceId).delete();
+
+        await this.database.librarySources.delete(normalizedSourceId);
+      },
+    );
+  }
 }

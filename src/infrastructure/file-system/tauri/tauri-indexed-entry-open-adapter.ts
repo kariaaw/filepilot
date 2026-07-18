@@ -1,5 +1,6 @@
+import { invoke } from '@tauri-apps/api/core';
 import { join } from '@tauri-apps/api/path';
-import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
+import { revealItemInDir } from '@tauri-apps/plugin-opener';
 
 import type { IndexedEntryOpenAdapter } from '@/core/ports/file-system-adapter';
 import type { TauriNativePathRegistry } from '@/infrastructure/file-system/tauri/tauri-native-path-registry';
@@ -13,6 +14,11 @@ export interface TauriIndexedEntryOpenAdapterDependencies {
   openNativePath?: NativePathOpener;
   revealNativeItem?: NativeItemRevealer;
 }
+
+const defaultOpenNativePath: NativePathOpener = (path) =>
+  invoke<void>('open_library_entry', {
+    path,
+  });
 
 function normalizeAccessKey(accessKey: string): string {
   const normalizedAccessKey = accessKey.trim();
@@ -67,7 +73,7 @@ export class TauriIndexedEntryOpenAdapter implements IndexedEntryOpenAdapter {
     dependencies: TauriIndexedEntryOpenAdapterDependencies = {},
   ) {
     this.joinPath = dependencies.joinPath ?? join;
-    this.openNativePath = dependencies.openNativePath ?? openPath;
+    this.openNativePath = dependencies.openNativePath ?? defaultOpenNativePath;
     this.revealNativeItem = dependencies.revealNativeItem ?? revealItemInDir;
   }
 

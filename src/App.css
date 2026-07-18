@@ -925,6 +925,48 @@
   white-space: nowrap;
 }
 
+.indexed-entry-operation-feedback {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.indexed-entry-operation-feedback--error {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+}
+
+.indexed-entry-operation-feedback--browser {
+  margin: var(--space-4) var(--space-5) 0;
+}
+
+.indexed-browser__table th.indexed-entry-actions-column,
+.indexed-browser__table td.indexed-entry-actions-column,
+.indexed-search__table th.indexed-entry-actions-column,
+.indexed-search__table td.indexed-entry-actions-column {
+  text-align: right;
+}
+
+.indexed-entry-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.indexed-entry-actions button {
+  color: var(--color-text-secondary);
+}
+
+.indexed-entry-actions button:hover:not(:disabled) {
+  color: var(--color-brand-600);
+}
+
 .indexed-browser__error {
   margin: var(--space-4) var(--space-5) 0;
   padding: var(--space-3) var(--space-4);
@@ -992,20 +1034,24 @@
 }
 
 .indexed-browser__table th:first-child {
-  width: 48%;
+  width: 42%;
   padding-left: var(--space-5);
 }
 
 .indexed-browser__table th:nth-child(2) {
-  width: 17%;
+  width: 14%;
 }
 
 .indexed-browser__table th:nth-child(3) {
-  width: 13%;
+  width: 12%;
+}
+
+.indexed-browser__table th:nth-child(4) {
+  width: 20%;
 }
 
 .indexed-browser__table th:last-child {
-  width: 22%;
+  width: 12%;
   padding-right: var(--space-5);
 }
 
@@ -1134,7 +1180,7 @@
   }
 
   .indexed-browser__table {
-    min-width: 46rem;
+    min-width: 52rem;
   }
 }
 
@@ -1196,7 +1242,7 @@
 
 .indexed-search__table {
   width: 100%;
-  min-width: 58rem;
+  min-width: 64rem;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -1218,24 +1264,28 @@
 }
 
 .indexed-search__table th:first-child {
-  width: 36%;
+  width: 31%;
   padding-left: var(--space-5);
 }
 
 .indexed-search__table th:nth-child(2) {
-  width: 17%;
-}
-
-.indexed-search__table th:nth-child(3) {
   width: 15%;
 }
 
+.indexed-search__table th:nth-child(3) {
+  width: 13%;
+}
+
 .indexed-search__table th:nth-child(4) {
-  width: 12%;
+  width: 10%;
+}
+
+.indexed-search__table th:nth-child(5) {
+  width: 19%;
 }
 
 .indexed-search__table th:last-child {
-  width: 20%;
+  width: 12%;
   padding-right: var(--space-5);
 }
 

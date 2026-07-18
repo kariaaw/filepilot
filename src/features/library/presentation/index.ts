@@ -12,3 +12,8 @@ export {
   useIndexedEntrySearch,
   type IndexedEntrySearchViewState,
 } from './use-indexed-entry-search';
+
+export {
+  useIndexedEntryOperations,
+  type IndexedEntryOperationViewState,
+} from './use-indexed-entry-operations';

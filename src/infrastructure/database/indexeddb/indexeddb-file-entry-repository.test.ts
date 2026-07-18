@@ -163,6 +163,50 @@ describe('IndexedDbFileEntryRepository', () => {
     expect(result.items.map((entry) => entry.id)).toEqual(['motor-document']);
   });
 
+  it('matches every search term across an indexed relative path', async () => {
+    await repository.saveMany([
+      createFileEntry({
+        id: 'filepilot-readme',
+        name: 'README.md',
+        relativePath: 'Projects/FilePilot/README.md',
+        extension: 'md',
+        mimeType: 'text/markdown',
+        category: 'text',
+      }),
+
+      createFileEntry({
+        id: 'filepilot-architecture',
+        name: 'architecture.md',
+        relativePath: 'Projects/FilePilot/architecture.md',
+        extension: 'md',
+        mimeType: 'text/markdown',
+        category: 'text',
+      }),
+
+      createFileEntry({
+        id: 'other-readme',
+        name: 'README.md',
+        relativePath: 'Projects/Other/README.md',
+        extension: 'md',
+        mimeType: 'text/markdown',
+        category: 'text',
+      }),
+    ]);
+
+    const result = await repository.find({
+      text: '   README    FILEPILOT   ',
+    });
+
+    expect(result.total).toBe(1);
+    expect(result.items.map((entry) => entry.id)).toEqual(['filepilot-readme']);
+
+    await expect(
+      repository.count({
+        text: 'filepilot readme',
+      }),
+    ).resolves.toBe(1);
+  });
+
   it('filters by metadata, size, timestamps, and security level', async () => {
     await repository.saveMany([
       createFileEntry({

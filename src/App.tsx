@@ -32,6 +32,7 @@ import {
   useIndexedEntryOperations,
   useIndexedEntrySearch,
   useIndexedFileBrowser,
+  useIndexedTextPreview,
   useLibraryWorkspace,
   type IndexedEntryOperationViewState,
   type IndexedEntrySearchViewState,
@@ -630,6 +631,13 @@ function IndexedEntryDetailsDialog({
   operations,
   onClose,
 }: IndexedEntryDetailsDialogProps): React.JSX.Element | null {
+  const textPreview = useIndexedTextPreview(libraryWorkspace);
+  const { clearPreview } = textPreview;
+
+  useEffect(() => {
+    clearPreview();
+  }, [entry?.id, clearPreview]);
+
   useEffect(() => {
     if (!entry) {
       return;
@@ -655,6 +663,11 @@ function IndexedEntryDetailsDialog({
   const EntryIcon = entry.kind === 'directory' ? Folder : FileIcon;
   const isOperationPending = operations.isPending(entry.id);
   const isUnavailable = entry.availability !== 'available';
+
+  const canPreviewText = textPreview.canPreview(entry);
+  const isPreviewPending = textPreview.isPreviewing(entry.id);
+
+  const previewResult = textPreview.preview?.entry.id === entry.id ? textPreview.preview : null;
 
   return (
     <div
@@ -700,8 +713,82 @@ function IndexedEntryDetailsDialog({
           <div className="indexed-entry-details__privacy-note">
             <Info aria-hidden="true" />
 
-            <p>This view reads indexed metadata only. File contents are not uploaded or opened.</p>
+            <p>
+              Metadata and previews stay on this device. Text content is read directly from the
+              approved local file and is never uploaded.
+            </p>
           </div>
+
+          {canPreviewText ? (
+            <section
+              className="indexed-entry-details__preview"
+              aria-label={`Local text preview for ${entry.name}`}
+            >
+              <header className="indexed-entry-details__preview-header">
+                <div>
+                  <span className="indexed-entry-details__preview-eyebrow">Local text preview</span>
+
+                  <h3>Read this file without opening another application</h3>
+
+                  <p>
+                    FilePilot reads only a bounded UTF-8 prefix from the approved file on this
+                    device.
+                  </p>
+                </div>
+
+                <Button
+                  size="small"
+                  variant="secondary"
+                  isLoading={isPreviewPending}
+                  loadingLabel={`Loading preview for ${entry.name}`}
+                  onClick={() => {
+                    void textPreview.previewEntry(entry);
+                  }}
+                >
+                  <FileSearch aria-hidden="true" />
+                  {previewResult ? 'Reload preview' : 'Preview text'}
+                </Button>
+              </header>
+
+              {isPreviewPending ? (
+                <div className="indexed-entry-details__preview-state" role="status">
+                  <span className="workspace__loading-indicator" aria-hidden="true" />
+                  Reading a bounded local preview…
+                </div>
+              ) : textPreview.error ? (
+                <p className="indexed-entry-details__preview-error" role="alert">
+                  {textPreview.error}
+                </p>
+              ) : previewResult ? (
+                <>
+                  <div className="indexed-entry-details__preview-summary">
+                    <span>{formatStorageSize(previewResult.bytesRead)} read locally</span>
+
+                    <span>{previewResult.truncated ? 'Partial preview' : 'Complete file'}</span>
+                  </div>
+
+                  {previewResult.text.length === 0 ? (
+                    <p className="indexed-entry-details__preview-empty">This text file is empty.</p>
+                  ) : (
+                    <pre className="indexed-entry-details__preview-content" tabIndex={0}>
+                      {previewResult.text}
+                    </pre>
+                  )}
+
+                  {previewResult.truncated ? (
+                    <p className="indexed-entry-details__preview-truncated">
+                      The file is larger than the safe preview limit. Open it with its default
+                      application to read the remaining content.
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="indexed-entry-details__preview-placeholder">
+                  Content is read only after you select Preview text.
+                </p>
+              )}
+            </section>
+          ) : null}
 
           <dl className="indexed-entry-details__metadata">
             <div>

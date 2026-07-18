@@ -201,3 +201,30 @@ export interface IndexedEntryOpenAdapter {
   openEntry(accessKey: string, relativePath: string): Promise<void>;
   revealEntry(accessKey: string, relativePath: string): Promise<void>;
 }
+
+/**
+ * Bounded byte content returned for a local indexed entry.
+ *
+ * The adapter reports truncation so presentation code never mistakes a
+ * partial preview for the complete file.
+ */
+export interface IndexedEntryContentReadResult {
+  bytes: ArrayBuffer;
+  truncated: boolean;
+}
+
+/**
+ * Minimal native capability for reading a bounded part of one indexed file.
+ *
+ * Implementations must keep path resolution and operating-system paths inside
+ * infrastructure and must never read beyond maximumBytes.
+ */
+export interface IndexedEntryContentAdapter {
+  readonly platform: LibrarySourcePlatform;
+
+  readEntry(
+    accessKey: string,
+    relativePath: string,
+    maximumBytes: number,
+  ): Promise<IndexedEntryContentReadResult>;
+}

@@ -17,3 +17,8 @@ export {
   useIndexedEntryOperations,
   type IndexedEntryOperationViewState,
 } from './use-indexed-entry-operations';
+
+export {
+  useIndexedTextPreview,
+  type IndexedTextPreviewViewState,
+} from './use-indexed-text-preview';

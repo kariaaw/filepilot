@@ -20,6 +20,11 @@ import type {
   OpenIndexedEntryResult,
 } from '@/features/library/application/open-indexed-entry';
 import type {
+  PreviewIndexedTextEntry,
+  PreviewIndexedTextEntryInput,
+  PreviewIndexedTextEntryResult,
+} from '@/features/library/application/preview-indexed-text-entry';
+import type {
   RemoveLibrarySource,
   RemoveLibrarySourceResult,
 } from '@/features/library/application/remove-library-source';
@@ -58,6 +63,11 @@ export type LibraryIndexedEntrySearchWorkflow = Pick<SearchIndexedEntries, 'exec
 export type LibraryIndexedEntryOpeningWorkflow = Pick<OpenIndexedEntry, 'execute'>;
 
 /**
+ * Narrow indexed text-preview capability consumed by the workspace.
+ */
+export type LibraryIndexedTextPreviewWorkflow = Pick<PreviewIndexedTextEntry, 'execute'>;
+
+/**
  * Narrow source-removal capability consumed by the workspace.
  */
 export type LibrarySourceRemovalWorkflow = Pick<RemoveLibrarySource, 'execute'>;
@@ -73,6 +83,7 @@ export interface LibraryWorkspaceDependencies {
   browseLibraryDirectory: LibraryDirectoryBrowsingWorkflow;
   searchIndexedEntries: LibraryIndexedEntrySearchWorkflow;
   openIndexedEntry: LibraryIndexedEntryOpeningWorkflow;
+  previewIndexedTextEntry: LibraryIndexedTextPreviewWorkflow;
   removeLibrarySource: LibrarySourceRemovalWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
@@ -193,6 +204,15 @@ export class LibraryWorkspace {
    */
   async openEntry(input: OpenIndexedEntryInput): Promise<OpenIndexedEntryResult> {
     return this.dependencies.openIndexedEntry.execute(input);
+  }
+
+  /**
+   * Loads a bounded local UTF-8 preview for one indexed text or code file.
+   */
+  async previewTextEntry(
+    input: PreviewIndexedTextEntryInput,
+  ): Promise<PreviewIndexedTextEntryResult> {
+    return this.dependencies.previewIndexedTextEntry.execute(input);
   }
 
   /**

@@ -23,6 +23,7 @@ export {
   type LibraryDirectoryBrowsingWorkflow,
   type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
+  type LibraryIndexedTextPreviewWorkflow,
   type LibraryRemovalSnapshot,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceListingRepository,
@@ -78,3 +79,15 @@ export {
   type RemoveLibrarySourceDependencies,
   type RemoveLibrarySourceResult,
 } from './remove-library-source';
+
+export {
+  DEFAULT_TEXT_PREVIEW_BYTES,
+  MAXIMUM_TEXT_PREVIEW_BYTES,
+  PreviewIndexedTextEntry,
+  type IndexedTextPreviewAccessPreparer,
+  type IndexedTextPreviewEntryRepository,
+  type IndexedTextPreviewSourceRepository,
+  type PreviewIndexedTextEntryDependencies,
+  type PreviewIndexedTextEntryInput,
+  type PreviewIndexedTextEntryResult,
+} from './preview-indexed-text-entry';

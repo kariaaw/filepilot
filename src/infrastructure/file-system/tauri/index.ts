@@ -25,3 +25,12 @@ export {
   type NativePathOpener,
   type TauriIndexedEntryOpenAdapterDependencies,
 } from './tauri-indexed-entry-open-adapter';
+
+export {
+  MAXIMUM_NATIVE_PREVIEW_BYTES,
+  TauriIndexedEntryContentAdapter,
+  type NativeContentPathJoiner,
+  type NativeEntryByteReader,
+  type TauriIndexedEntryContentAdapterDependencies,
+  type TauriReadLibraryEntryResponse,
+} from './tauri-indexed-entry-content-adapter';

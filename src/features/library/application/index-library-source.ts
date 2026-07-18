@@ -94,6 +94,78 @@ function addSafeInteger(currentValue: number, increment: number, fieldName: stri
 }
 
 /**
+ * Calculates the recursive size of every indexed directory.
+ *
+ * File sizes are propagated through every ancestor directory while the source
+ * total remains based only on regular files, preventing double-counting.
+ */
+function applyRecursiveDirectorySizes(entries: readonly FileEntry[]): FileEntry[] {
+  const entriesById = new Map(entries.map((entry) => [entry.id, entry] as const));
+
+  const directorySizes = new Map<string, number>();
+
+  for (const entry of entries) {
+    if (entry.kind === 'directory') {
+      directorySizes.set(entry.id, 0);
+    }
+  }
+
+  for (const entry of entries) {
+    const visitedParentIds = new Set<string>();
+
+    let parentId = entry.parentId;
+
+    while (parentId !== null) {
+      if (visitedParentIds.has(parentId)) {
+        throw new Error(`The indexed directory hierarchy contains a cycle at entry "${parentId}".`);
+      }
+
+      visitedParentIds.add(parentId);
+
+      const parentEntry = entriesById.get(parentId);
+
+      if (!parentEntry) {
+        throw new Error(
+          `Indexed entry "${entry.relativePath}" references a missing parent directory.`,
+        );
+      }
+
+      if (parentEntry.kind !== 'directory') {
+        throw new Error(
+          `Indexed entry "${entry.relativePath}" references a parent that is not a directory.`,
+        );
+      }
+
+      if (parentEntry.sourceId !== entry.sourceId) {
+        throw new Error(
+          `Indexed entry "${entry.relativePath}" references a directory from another source.`,
+        );
+      }
+
+      if (entry.kind === 'file') {
+        const currentDirectorySize = directorySizes.get(parentEntry.id) ?? 0;
+
+        directorySizes.set(
+          parentEntry.id,
+          addSafeInteger(currentDirectorySize, entry.sizeBytes, 'directory size'),
+        );
+      }
+
+      parentId = parentEntry.parentId;
+    }
+  }
+
+  return entries.map((entry) =>
+    entry.kind === 'directory'
+      ? {
+          ...entry,
+          sizeBytes: directorySizes.get(entry.id) ?? 0,
+        }
+      : entry,
+  );
+}
+
+/**
  * Scans one saved library source and atomically commits its complete index.
  *
  * Scanner and mapping failures occur before persistence, so the previous
@@ -216,6 +288,10 @@ export class IndexLibrarySource {
 
     throwIfCancelled(options.signal);
 
+    const entriesWithDirectorySizes = applyRecursiveDirectorySizes(indexedEntries);
+
+    throwIfCancelled(options.signal);
+
     const scanCompletedAtMs = this.getCurrentTimestamp();
 
     if (scanCompletedAtMs < scanStartedAtMs) {
@@ -235,12 +311,12 @@ export class IndexLibrarySource {
 
     await this.dependencies.libraryIndexRepository.replaceSourceIndex(
       indexedSource,
-      indexedEntries,
+      entriesWithDirectorySizes,
     );
 
     return {
       source: indexedSource,
-      entryCount: indexedEntries.length,
+      entryCount: entriesWithDirectorySizes.length,
       scanStartedAtMs,
       scanCompletedAtMs,
     };

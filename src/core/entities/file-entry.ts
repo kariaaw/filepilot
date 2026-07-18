@@ -115,8 +115,10 @@ export const FileEntrySchema = z.object({
   category: FileCategorySchema,
 
   /**
-   * File size in bytes. Directories use zero until folder-size
-   * aggregation is calculated by a dedicated service.
+   * File size in bytes.
+   *
+   * Indexed directories contain the recursive total of every descendant file.
+   * Empty directories use zero.
    */
   sizeBytes: z.number().int().nonnegative(),
 

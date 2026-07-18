@@ -275,6 +275,131 @@ describe('IndexLibrarySource', () => {
     expect(committedEntries.some((entry) => entry.relativePath === 'stale.txt')).toBe(false);
   });
 
+  it('aggregates recursive folder sizes without double-counting source storage', async () => {
+    const source = createTauriSource();
+
+    const projectsDirectory: DiscoveredFileSystemEntry = {
+      name: 'Projects',
+      relativePath: 'Projects',
+      kind: 'directory',
+      extension: null,
+      mimeType: null,
+      category: 'other',
+      sizeBytes: 0,
+      createdAtMs: 100,
+      modifiedAtMs: 200,
+    };
+
+    const applicationDirectory: DiscoveredFileSystemEntry = {
+      name: 'FilePilot',
+      relativePath: 'Projects/FilePilot',
+      kind: 'directory',
+      extension: null,
+      mimeType: null,
+      category: 'other',
+      sizeBytes: 0,
+      createdAtMs: 100,
+      modifiedAtMs: 200,
+    };
+
+    const emptyDirectory: DiscoveredFileSystemEntry = {
+      name: 'Empty',
+      relativePath: 'Empty',
+      kind: 'directory',
+      extension: null,
+      mimeType: null,
+      category: 'other',
+      sizeBytes: 0,
+      createdAtMs: 100,
+      modifiedAtMs: 200,
+    };
+
+    const applicationFile: DiscoveredFileSystemEntry = {
+      name: 'app.bin',
+      relativePath: 'Projects/FilePilot/app.bin',
+      kind: 'file',
+      extension: 'bin',
+      mimeType: 'application/octet-stream',
+      category: 'other',
+      sizeBytes: 900,
+      createdAtMs: 300,
+      modifiedAtMs: 400,
+    };
+
+    const projectFile: DiscoveredFileSystemEntry = {
+      name: 'notes.md',
+      relativePath: 'Projects/notes.md',
+      kind: 'file',
+      extension: 'md',
+      mimeType: 'text/markdown',
+      category: 'text',
+      sizeBytes: 100,
+      createdAtMs: 300,
+      modifiedAtMs: 400,
+    };
+
+    const rootFile: DiscoveredFileSystemEntry = {
+      name: 'root.txt',
+      relativePath: 'root.txt',
+      kind: 'file',
+      extension: 'txt',
+      mimeType: 'text/plain',
+      category: 'text',
+      sizeBytes: 50,
+      createdAtMs: 300,
+      modifiedAtMs: 400,
+    };
+
+    const indexRepository = new MemoryIndexRepository();
+
+    const timestamps = [1_000, 2_000];
+    let timestampIndex = 0;
+
+    const useCase = new IndexLibrarySource({
+      librarySourceRepository: new MemorySourceRepository(source),
+      existingFileEntryRepository: new MemoryExistingEntryRepository(),
+      libraryIndexRepository: indexRepository,
+
+      /*
+       * Children intentionally appear before their parent directories to prove
+       * aggregation does not depend on scanner traversal order.
+       */
+      directoryScanAdapter: new StubDirectoryScanner([
+        applicationFile,
+        applicationDirectory,
+        projectFile,
+        projectsDirectory,
+        emptyDirectory,
+        rootFile,
+      ]),
+
+      sourceAccessPreparer: new StubAccessPreparer(),
+      buildIndexedFileEntry: createBuilder(),
+      now: () => timestamps[timestampIndex++] ?? 2_000,
+    });
+
+    const result = await useCase.execute(source.id);
+
+    expect(result.source.statistics).toEqual({
+      fileCount: 3,
+      directoryCount: 3,
+      totalSizeBytes: 1_050,
+    });
+
+    const committedEntries = indexRepository.commits[0]?.entries ?? [];
+
+    const entriesByPath = new Map(committedEntries.map((entry) => [entry.relativePath, entry]));
+
+    expect(entriesByPath.get('Projects')?.sizeBytes).toBe(1_000);
+    expect(entriesByPath.get('Projects/FilePilot')?.sizeBytes).toBe(900);
+    expect(entriesByPath.get('Empty')?.sizeBytes).toBe(0);
+
+    expect(entriesByPath.get('Projects/FilePilot/app.bin')?.sizeBytes).toBe(900);
+
+    expect(entriesByPath.get('Projects/notes.md')?.sizeBytes).toBe(100);
+    expect(entriesByPath.get('root.txt')?.sizeBytes).toBe(50);
+  });
+
   it('commits an empty index with zero statistics', async () => {
     const source = createTauriSource({
       statistics: {

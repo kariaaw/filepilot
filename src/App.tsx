@@ -746,7 +746,7 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
 
                     <td>{formatEntryType(entry)}</td>
 
-                    <td>{entry.kind === 'directory' ? '—' : formatStorageSize(entry.sizeBytes)}</td>
+                    <td>{formatStorageSize(entry.sizeBytes)}</td>
 
                     <td>
                       <time

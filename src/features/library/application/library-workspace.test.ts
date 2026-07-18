@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import { parseLibrarySource, type LibrarySource } from '@/core/entities/library-source';
 import type { LibrarySourcePage, LibrarySourceQuery } from '@/core/ports/library-source-repository';
+import type {
+  BrowseLibraryDirectoryInput,
+  BrowseLibraryDirectoryResult,
+} from '@/features/library/application/browse-library-directory';
 import type { ConnectLibrarySourceResult } from '@/features/library/application/connect-library-source';
 import type {
   IndexLibrarySourceOptions,
@@ -9,6 +13,7 @@ import type {
 } from '@/features/library/application/index-library-source';
 import {
   LibraryWorkspace,
+  type LibraryDirectoryBrowsingWorkflow,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceIndexingWorkflow,
   type LibrarySourceListingRepository,
@@ -110,6 +115,29 @@ class StubIndexingWorkflow implements LibrarySourceIndexingWorkflow {
   }
 }
 
+class StubDirectoryBrowsingWorkflow implements LibraryDirectoryBrowsingWorkflow {
+  readonly calls: BrowseLibraryDirectoryInput[] = [];
+
+  constructor(private readonly result: BrowseLibraryDirectoryResult) {}
+
+  async execute(input: BrowseLibraryDirectoryInput): Promise<BrowseLibraryDirectoryResult> {
+    this.calls.push(input);
+
+    return this.result;
+  }
+}
+
+function createUnusedDirectoryBrowsingWorkflow(): StubDirectoryBrowsingWorkflow {
+  return new StubDirectoryBrowsingWorkflow({
+    sourceId: 'unused-source',
+    currentDirectory: null,
+    items: [],
+    total: 0,
+    offset: 0,
+    limit: 100,
+  });
+}
+
 function createUnusedIndexingWorkflow(): StubIndexingWorkflow {
   const source = createSource('unused-source', 'Unused');
 
@@ -129,6 +157,7 @@ describe('LibraryWorkspace', () => {
       connectLibrarySource: new StubConnectionWorkflow({
         status: 'cancelled',
       }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
       pageSize: 2,
     });
@@ -167,6 +196,7 @@ describe('LibraryWorkspace', () => {
       connectLibrarySource: new StubConnectionWorkflow({
         status: 'cancelled',
       }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -194,6 +224,7 @@ describe('LibraryWorkspace', () => {
     const workspace = new LibraryWorkspace({
       librarySourceRepository: repository,
       connectLibrarySource: workflow,
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -221,6 +252,7 @@ describe('LibraryWorkspace', () => {
       connectLibrarySource: new StubConnectionWorkflow({
         status: 'cancelled',
       }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -260,6 +292,7 @@ describe('LibraryWorkspace', () => {
       connectLibrarySource: new StubConnectionWorkflow({
         status: 'cancelled',
       }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       indexLibrarySource: indexingWorkflow,
     });
 
@@ -283,6 +316,39 @@ describe('LibraryWorkspace', () => {
     expect(snapshot.total).toBe(1);
   });
 
+  it('browses an indexed directory through the workspace facade', async () => {
+    const browsingResult: BrowseLibraryDirectoryResult = {
+      sourceId: 'source-documents',
+      currentDirectory: null,
+      items: [],
+      total: 0,
+      offset: 20,
+      limit: 25,
+    };
+
+    const browsingWorkflow = new StubDirectoryBrowsingWorkflow(browsingResult);
+
+    const workspace = new LibraryWorkspace({
+      librarySourceRepository: new MemoryListingRepository(),
+      connectLibrarySource: new StubConnectionWorkflow({
+        status: 'cancelled',
+      }),
+      browseLibraryDirectory: browsingWorkflow,
+      indexLibrarySource: createUnusedIndexingWorkflow(),
+    });
+
+    const input: BrowseLibraryDirectoryInput = {
+      sourceId: 'source-documents',
+      parentId: null,
+      offset: 20,
+      limit: 25,
+    };
+
+    await expect(workspace.browseDirectory(input)).resolves.toEqual(browsingResult);
+
+    expect(browsingWorkflow.calls).toEqual([input]);
+  });
+
   it('rejects invalid repository page sizes', () => {
     const repository = new MemoryListingRepository();
 
@@ -295,6 +361,7 @@ describe('LibraryWorkspace', () => {
         new LibraryWorkspace({
           librarySourceRepository: repository,
           connectLibrarySource: connectionWorkflow,
+          browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 0,
         }),
@@ -305,6 +372,7 @@ describe('LibraryWorkspace', () => {
         new LibraryWorkspace({
           librarySourceRepository: repository,
           connectLibrarySource: connectionWorkflow,
+          browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 501,
         }),

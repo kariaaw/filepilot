@@ -1,4 +1,5 @@
 import {
+  BrowseLibraryDirectory,
   BuildIndexedFileEntry,
   ConnectLibrarySource,
   IndexLibrarySource,
@@ -42,6 +43,10 @@ const connectLibrarySource = new ConnectLibrarySource({
   librarySourceRepository,
 });
 
+const browseLibraryDirectory = new BrowseLibraryDirectory({
+  fileEntryRepository,
+});
+
 const indexLibrarySource = new IndexLibrarySource({
   librarySourceRepository,
   existingFileEntryRepository: fileEntryRepository,
@@ -52,6 +57,7 @@ const indexLibrarySource = new IndexLibrarySource({
 });
 
 export const libraryWorkspace = new LibraryWorkspace({
+  browseLibraryDirectory,
   connectLibrarySource,
   indexLibrarySource,
   librarySourceRepository,

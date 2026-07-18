@@ -13,7 +13,7 @@ import type {
  * accepting arbitrary or unsafe database column names.
  */
 export type FileEntrySortField =
-  'name' | 'sizeBytes' | 'createdAtMs' | 'modifiedAtMs' | 'indexedAtMs';
+  'name' | 'kind' | 'sizeBytes' | 'createdAtMs' | 'modifiedAtMs' | 'indexedAtMs';
 
 /**
  * Common ordering directions supported by every storage adapter.

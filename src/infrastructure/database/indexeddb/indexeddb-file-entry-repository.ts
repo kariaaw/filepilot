@@ -125,6 +125,22 @@ function normalizeTags(tags?: readonly string[]): readonly string[] {
 }
 
 /**
+ * Converts free-form search text into unique normalized terms.
+ *
+ * Each term is matched independently so a query such as
+ * "FilePilot README" can match "Projects/FilePilot/README.md".
+ */
+function normalizeSearchTerms(text?: string): readonly string[] {
+  if (!text) {
+    return [];
+  }
+
+  const normalizedTerms = normalizeIndexedText(text).split(/\s+/u).filter(Boolean);
+
+  return [...new Set(normalizedTerms)];
+}
+
+/**
  * Checks whether an entry contains every requested tag.
  *
  * Requiring all tags makes combined filters predictable. A future advanced
@@ -141,6 +157,25 @@ function matchesTags(record: FileEntryRecord, requestedTags: readonly string[]):
 }
 
 /**
+ * Checks whether every requested term appears in the indexed name or path.
+ *
+ * Terms use AND semantics while each searchable field uses OR semantics.
+ * Query order does not affect the result.
+ */
+function matchesSearchTerms(
+  record: FileEntryRecord,
+  normalizedSearchTerms: readonly string[],
+): boolean {
+  if (normalizedSearchTerms.length === 0) {
+    return true;
+  }
+
+  return normalizedSearchTerms.every(
+    (term) => record.normalizedName.includes(term) || record.normalizedRelativePath.includes(term),
+  );
+}
+
+/**
  * Applies all portable repository filters to one IndexedDB record.
  */
 function matchesQuery(
@@ -148,7 +183,7 @@ function matchesQuery(
   query: FileEntryQuery,
   normalizedExtensions: ReadonlySet<string> | null,
   normalizedTags: readonly string[],
-  normalizedSearchText: string,
+  normalizedSearchTerms: readonly string[],
 ): boolean {
   if (query.sourceId !== undefined && record.sourceId !== query.sourceId) {
     return false;
@@ -186,11 +221,7 @@ function matchesQuery(
     return false;
   }
 
-  if (
-    normalizedSearchText &&
-    !record.normalizedName.includes(normalizedSearchText) &&
-    !record.normalizedRelativePath.includes(normalizedSearchText)
-  ) {
+  if (!matchesSearchTerms(record, normalizedSearchTerms)) {
     return false;
   }
 
@@ -343,10 +374,10 @@ function filterRecords(
 ): FileEntryRecord[] {
   const normalizedExtensions = normalizeExtensions(query.extensions);
   const normalizedTags = normalizeTags(query.tags);
-  const normalizedSearchText = query.text ? normalizeIndexedText(query.text) : '';
+  const normalizedSearchTerms = normalizeSearchTerms(query.text);
 
   return records.filter((record) =>
-    matchesQuery(record, query, normalizedExtensions, normalizedTags, normalizedSearchText),
+    matchesQuery(record, query, normalizedExtensions, normalizedTags, normalizedSearchTerms),
   );
 }
 

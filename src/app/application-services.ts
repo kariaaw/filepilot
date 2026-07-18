@@ -4,6 +4,7 @@ import {
   ConnectLibrarySource,
   IndexLibrarySource,
   LibraryWorkspace,
+  OpenIndexedEntry,
   SearchIndexedEntries,
 } from '@/features/library/application';
 import { IndexedDbFileEntryRepository } from '@/infrastructure/database/indexeddb/indexeddb-file-entry-repository';
@@ -12,6 +13,7 @@ import { IndexedDbLibrarySourceRepository } from '@/infrastructure/database/inde
 import {
   TauriDirectoryScanAdapter,
   TauriDirectorySelectionAdapter,
+  TauriIndexedEntryOpenAdapter,
   TauriLibrarySourceAccessPreparer,
   TauriNativePathRegistry,
 } from '@/infrastructure/file-system/tauri';
@@ -36,6 +38,15 @@ const directorySelectionAdapter = new TauriDirectorySelectionAdapter(undefined, 
 const directoryScanAdapter = new TauriDirectoryScanAdapter(nativePathRegistry);
 
 const sourceAccessPreparer = new TauriLibrarySourceAccessPreparer(nativePathRegistry);
+
+const indexedEntryOpenAdapter = new TauriIndexedEntryOpenAdapter(nativePathRegistry);
+
+const openIndexedEntry = new OpenIndexedEntry({
+  fileEntryRepository,
+  librarySourceRepository,
+  sourceAccessPreparer,
+  indexedEntryOpenAdapter,
+});
 
 const buildIndexedFileEntry = new BuildIndexedFileEntry();
 
@@ -67,4 +78,5 @@ export const libraryWorkspace = new LibraryWorkspace({
   indexLibrarySource,
   librarySourceRepository,
   searchIndexedEntries,
+  openIndexedEntry,
 });

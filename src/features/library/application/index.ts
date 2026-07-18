@@ -21,6 +21,7 @@ export {
   LibraryWorkspace,
   type LibraryConnectionSnapshot,
   type LibraryDirectoryBrowsingWorkflow,
+  type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceListingRepository,
@@ -47,6 +48,17 @@ export {
   type LibrarySourceAccessPreparer,
   type LibrarySourceIndexingRepository,
 } from './index-library-source';
+
+export {
+  OpenIndexedEntry,
+  type IndexedEntryAccessPreparer,
+  type IndexedEntryOpeningRepository,
+  type IndexedEntryOpenOperation,
+  type IndexedEntrySourceRepository,
+  type OpenIndexedEntryDependencies,
+  type OpenIndexedEntryInput,
+  type OpenIndexedEntryResult,
+} from './open-indexed-entry';
 
 export {
   SearchIndexedEntries,

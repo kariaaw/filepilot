@@ -3,6 +3,8 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  ExternalLink,
+  Eye,
   File as FileIcon,
   FileSearch,
   Folder,
@@ -25,13 +27,16 @@ import type { AppView } from '@/app/navigation/app-view';
 import type { FileEntry } from '@/core/entities/file-entry';
 import type { LibrarySource } from '@/core/entities/library-source';
 import {
+  useIndexedEntryOperations,
   useIndexedEntrySearch,
   useIndexedFileBrowser,
   useLibraryWorkspace,
+  type IndexedEntryOperationViewState,
   type IndexedEntrySearchViewState,
   type IndexedFileBrowserViewState,
 } from '@/features/library/presentation';
 import { Button } from '@/shared/components/button';
+import { IconButton } from '@/shared/components/icon-button';
 
 import './App.css';
 
@@ -110,6 +115,8 @@ function App(): React.JSX.Element {
 
   const fileBrowser = useIndexedFileBrowser(libraryWorkspace);
 
+  const entryOperations = useIndexedEntryOperations(libraryWorkspace);
+
   const indexedSearch = useIndexedEntrySearch(libraryWorkspace);
 
   const libraryStatistics = useMemo(
@@ -152,7 +159,11 @@ function App(): React.JSX.Element {
       onClearSearch={indexedSearch.clearSearch}
     >
       {indexedSearch.hasSearchText ? (
-        <IndexedSearchResultsPage search={indexedSearch} sources={sources} />
+        <IndexedSearchResultsPage
+          search={indexedSearch}
+          sources={sources}
+          operations={entryOperations}
+        />
       ) : activeView === 'overview' ? (
         <OverviewPage
           sources={sources}
@@ -174,6 +185,7 @@ function App(): React.JSX.Element {
           notice={notice}
           error={error}
           fileBrowser={fileBrowser}
+          entryOperations={entryOperations}
           onAddFolder={handleAddFolder}
           onIndexSource={handleIndexSource}
         />
@@ -187,11 +199,13 @@ function App(): React.JSX.Element {
 interface IndexedSearchResultsPageProps {
   search: IndexedEntrySearchViewState;
   sources: readonly LibrarySource[];
+  operations: IndexedEntryOperationViewState;
 }
 
 function IndexedSearchResultsPage({
   search,
   sources,
+  operations,
 }: IndexedSearchResultsPageProps): React.JSX.Element {
   const sourceNames = useMemo(
     () => new Map(sources.map((source) => [source.id, source.name] as const)),
@@ -230,6 +244,8 @@ function IndexedSearchResultsPage({
           </Button>
         </div>
       </header>
+
+      <IndexedEntryOperationFeedback operations={operations} />
 
       {search.error ? (
         <p className="workspace__feedback workspace__feedback--error" role="alert">
@@ -277,6 +293,9 @@ function IndexedSearchResultsPage({
                   <th scope="col">Type</th>
                   <th scope="col">Size</th>
                   <th scope="col">Modified</th>
+                  <th scope="col" className="indexed-entry-actions-column">
+                    Actions
+                  </th>
                 </tr>
               </thead>
 
@@ -320,6 +339,39 @@ function IndexedSearchResultsPage({
                           {formatEntryModifiedDate(entry.modifiedAtMs)}
                         </time>
                       </td>
+
+                      <td className="indexed-entry-actions-column">
+                        <div
+                          className="indexed-entry-actions"
+                          aria-busy={operations.isPending(entry.id)}
+                        >
+                          <IconButton
+                            size="small"
+                            variant="ghost"
+                            icon={<ExternalLink />}
+                            aria-label={`Open ${entry.name}`}
+                            disabled={
+                              entry.availability !== 'available' || operations.isPending(entry.id)
+                            }
+                            onClick={() => {
+                              void operations.openEntry(entry);
+                            }}
+                          />
+
+                          <IconButton
+                            size="small"
+                            variant="ghost"
+                            icon={<Eye />}
+                            aria-label={`Reveal ${entry.name} in file manager`}
+                            disabled={
+                              entry.availability !== 'available' || operations.isPending(entry.id)
+                            }
+                            onClick={() => {
+                              void operations.revealEntry(entry);
+                            }}
+                          />
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -334,6 +386,35 @@ function IndexedSearchResultsPage({
         </section>
       )}
     </div>
+  );
+}
+
+interface IndexedEntryOperationFeedbackProps {
+  operations: IndexedEntryOperationViewState;
+  insideBrowser?: boolean;
+}
+
+function IndexedEntryOperationFeedback({
+  operations,
+  insideBrowser = false,
+}: IndexedEntryOperationFeedbackProps): React.JSX.Element | null {
+  if (!operations.notice && !operations.error) {
+    return null;
+  }
+
+  return (
+    <p
+      className={[
+        'indexed-entry-operation-feedback',
+        operations.error ? 'indexed-entry-operation-feedback--error' : '',
+        insideBrowser ? 'indexed-entry-operation-feedback--browser' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      role={operations.error ? 'alert' : 'status'}
+    >
+      {operations.error ?? operations.notice}
+    </p>
   );
 }
 
@@ -487,6 +568,7 @@ interface LibraryPageProps {
   notice: string | null;
   error: string | null;
   fileBrowser: IndexedFileBrowserViewState;
+  entryOperations: IndexedEntryOperationViewState;
   onAddFolder: () => void;
   onIndexSource: (sourceId: string) => void;
 }
@@ -499,6 +581,7 @@ function LibraryPage({
   notice,
   error,
   fileBrowser,
+  entryOperations,
   onAddFolder,
   onIndexSource,
 }: LibraryPageProps): React.JSX.Element {
@@ -581,7 +664,11 @@ function LibraryPage({
           </section>
 
           {fileBrowser.isOpen || fileBrowser.isLoading || fileBrowser.error ? (
-            <IndexedFileBrowser source={selectedSource} browser={fileBrowser} />
+            <IndexedFileBrowser
+              source={selectedSource}
+              browser={fileBrowser}
+              operations={entryOperations}
+            />
           ) : null}
         </>
       )}
@@ -756,9 +843,14 @@ function formatEntryType(entry: FileEntry): string {
 interface IndexedFileBrowserProps {
   source: LibrarySource | null;
   browser: IndexedFileBrowserViewState;
+  operations: IndexedEntryOperationViewState;
 }
 
-function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React.JSX.Element {
+function IndexedFileBrowser({
+  source,
+  browser,
+  operations,
+}: IndexedFileBrowserProps): React.JSX.Element {
   const sourceName = source?.name ?? 'Indexed files';
 
   return (
@@ -831,6 +923,8 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
         </span>
       </div>
 
+      <IndexedEntryOperationFeedback operations={operations} insideBrowser />
+
       {browser.error ? (
         <p className="indexed-browser__error" role="alert">
           {browser.error}
@@ -858,6 +952,9 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
                 <th scope="col">Type</th>
                 <th scope="col">Size</th>
                 <th scope="col">Modified</th>
+                <th scope="col" className="indexed-entry-actions-column">
+                  Actions
+                </th>
               </tr>
             </thead>
 
@@ -921,6 +1018,39 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
                       >
                         {formatEntryModifiedDate(entry.modifiedAtMs)}
                       </time>
+                    </td>
+
+                    <td className="indexed-entry-actions-column">
+                      <div
+                        className="indexed-entry-actions"
+                        aria-busy={operations.isPending(entry.id)}
+                      >
+                        <IconButton
+                          size="small"
+                          variant="ghost"
+                          icon={<ExternalLink />}
+                          aria-label={`Open ${entry.name}`}
+                          disabled={
+                            entry.availability !== 'available' || operations.isPending(entry.id)
+                          }
+                          onClick={() => {
+                            void operations.openEntry(entry);
+                          }}
+                        />
+
+                        <IconButton
+                          size="small"
+                          variant="ghost"
+                          icon={<Eye />}
+                          aria-label={`Reveal ${entry.name} in file manager`}
+                          disabled={
+                            entry.availability !== 'available' || operations.isPending(entry.id)
+                          }
+                          onClick={() => {
+                            void operations.revealEntry(entry);
+                          }}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );

@@ -4,6 +4,7 @@ import {
   ConnectLibrarySource,
   IndexLibrarySource,
   LibraryWorkspace,
+  SearchIndexedEntries,
 } from '@/features/library/application';
 import { IndexedDbFileEntryRepository } from '@/infrastructure/database/indexeddb/indexeddb-file-entry-repository';
 import { IndexedDbLibraryIndexRepository } from '@/infrastructure/database/indexeddb/indexeddb-library-index-repository';
@@ -47,6 +48,10 @@ const browseLibraryDirectory = new BrowseLibraryDirectory({
   fileEntryRepository,
 });
 
+const searchIndexedEntries = new SearchIndexedEntries({
+  fileEntryRepository,
+});
+
 const indexLibrarySource = new IndexLibrarySource({
   librarySourceRepository,
   existingFileEntryRepository: fileEntryRepository,
@@ -61,4 +66,5 @@ export const libraryWorkspace = new LibraryWorkspace({
   connectLibrarySource,
   indexLibrarySource,
   librarySourceRepository,
+  searchIndexedEntries,
 });

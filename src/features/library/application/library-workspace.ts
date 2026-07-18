@@ -14,6 +14,11 @@ import type {
   IndexLibrarySourceOptions,
   IndexLibrarySourceResult,
 } from '@/features/library/application/index-library-source';
+import type {
+  SearchIndexedEntries,
+  SearchIndexedEntriesInput,
+  SearchIndexedEntriesResult,
+} from '@/features/library/application/search-indexed-entries';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAXIMUM_PAGE_SIZE = 500;
@@ -34,6 +39,11 @@ export type LibrarySourceConnectionWorkflow = Pick<ConnectLibrarySource, 'execut
 export type LibraryDirectoryBrowsingWorkflow = Pick<BrowseLibraryDirectory, 'execute'>;
 
 /**
+ * Narrow indexed-entry search capability consumed by the workspace.
+ */
+export type LibraryIndexedEntrySearchWorkflow = Pick<SearchIndexedEntries, 'execute'>;
+
+/**
  * Narrow indexing capability consumed by the presentation-facing facade.
  */
 export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
@@ -42,6 +52,7 @@ export interface LibraryWorkspaceDependencies {
   librarySourceRepository: LibrarySourceListingRepository;
   connectLibrarySource: LibrarySourceConnectionWorkflow;
   browseLibraryDirectory: LibraryDirectoryBrowsingWorkflow;
+  searchIndexedEntries: LibraryIndexedEntrySearchWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
   /**
@@ -143,6 +154,13 @@ export class LibraryWorkspace {
    */
   async browseDirectory(input: BrowseLibraryDirectoryInput): Promise<BrowseLibraryDirectoryResult> {
     return this.dependencies.browseLibraryDirectory.execute(input);
+  }
+
+  /**
+   * Searches indexed file and directory metadata across the Library.
+   */
+  async searchEntries(input: SearchIndexedEntriesInput): Promise<SearchIndexedEntriesResult> {
+    return this.dependencies.searchIndexedEntries.execute(input);
   }
 
   /**

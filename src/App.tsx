@@ -1,8 +1,12 @@
 import {
+  ArrowLeft,
+  ChevronRight,
   Clock,
   Copy,
+  File as FileIcon,
   FileSearch,
   Folder,
+  FolderOpen,
   FolderPlus,
   HardDrive,
   RefreshCw,
@@ -10,6 +14,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -17,8 +22,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { libraryWorkspace } from '@/app/application-services';
 import { AppShell } from '@/app/layouts/app-shell';
 import type { AppView } from '@/app/navigation/app-view';
+import type { FileEntry } from '@/core/entities/file-entry';
 import type { LibrarySource } from '@/core/entities/library-source';
-import { useLibraryWorkspace } from '@/features/library/presentation';
+import {
+  useIndexedFileBrowser,
+  useLibraryWorkspace,
+  type IndexedFileBrowserViewState,
+} from '@/features/library/presentation';
 import { Button } from '@/shared/components/button';
 
 import './App.css';
@@ -96,6 +106,8 @@ function App(): React.JSX.Element {
     indexSource,
   } = useLibraryWorkspace(libraryWorkspace);
 
+  const fileBrowser = useIndexedFileBrowser(libraryWorkspace);
+
   const libraryStatistics = useMemo(
     () =>
       sources.reduce(
@@ -151,6 +163,7 @@ function App(): React.JSX.Element {
           indexingSourceIds={indexingSourceIds}
           notice={notice}
           error={error}
+          fileBrowser={fileBrowser}
           onAddFolder={handleAddFolder}
           onIndexSource={handleIndexSource}
         />
@@ -310,6 +323,7 @@ interface LibraryPageProps {
   indexingSourceIds: readonly string[];
   notice: string | null;
   error: string | null;
+  fileBrowser: IndexedFileBrowserViewState;
   onAddFolder: () => void;
   onIndexSource: (sourceId: string) => void;
 }
@@ -321,9 +335,14 @@ function LibraryPage({
   indexingSourceIds,
   notice,
   error,
+  fileBrowser,
   onAddFolder,
   onIndexSource,
 }: LibraryPageProps): React.JSX.Element {
+  const activeBrowserSourceId = fileBrowser.selectedSourceId ?? fileBrowser.loadingSourceId;
+
+  const selectedSource = sources.find((source) => source.id === activeBrowserSourceId) ?? null;
+
   return (
     <div className="workspace">
       <header className="workspace__header workspace__header--actions">
@@ -384,16 +403,24 @@ function LibraryPage({
           </Button>
         </section>
       ) : (
-        <section className="library-source-grid" aria-label="Connected folders">
-          {sources.map((source) => (
-            <LibrarySourceCard
-              key={source.id}
-              source={source}
-              isIndexing={indexingSourceIds.includes(source.id)}
-              onIndexSource={onIndexSource}
-            />
-          ))}
-        </section>
+        <>
+          <section className="library-source-grid" aria-label="Connected folders">
+            {sources.map((source) => (
+              <LibrarySourceCard
+                key={source.id}
+                source={source}
+                isIndexing={indexingSourceIds.includes(source.id)}
+                isBrowsing={fileBrowser.loadingSourceId === source.id}
+                onBrowseSource={fileBrowser.openSource}
+                onIndexSource={onIndexSource}
+              />
+            ))}
+          </section>
+
+          {fileBrowser.isOpen || fileBrowser.isLoading || fileBrowser.error ? (
+            <IndexedFileBrowser source={selectedSource} browser={fileBrowser} />
+          ) : null}
+        </>
       )}
     </div>
   );
@@ -440,12 +467,16 @@ function formatLastIndexed(lastScannedAtMs: number | null): string {
 
 interface LibrarySourceCardProps extends LibrarySourceProps {
   isIndexing: boolean;
+  isBrowsing: boolean;
+  onBrowseSource: (sourceId: string) => Promise<void>;
   onIndexSource: (sourceId: string) => void;
 }
 
 function LibrarySourceCard({
   source,
   isIndexing,
+  isBrowsing,
+  onBrowseSource,
   onIndexSource,
 }: LibrarySourceCardProps): React.JSX.Element {
   const hasBeenIndexed = source.lastScannedAtMs !== null;
@@ -499,23 +530,249 @@ function LibrarySourceCard({
           )}
         </div>
 
-        <Button
-          className="library-source__index-button"
-          size="medium"
-          variant="primary"
-          fullWidth
-          disabled={source.access !== 'available'}
-          isLoading={isIndexing}
-          loadingLabel={`Indexing ${source.name}`}
-          onClick={() => {
-            onIndexSource(source.id);
-          }}
-        >
-          <RefreshCw aria-hidden="true" />
-          {hasBeenIndexed ? 'Refresh index' : 'Index now'}
-        </Button>
+        <div className="library-source__button-stack">
+          <Button
+            className="library-source__browse-button"
+            size="medium"
+            variant="secondary"
+            fullWidth
+            disabled={!hasBeenIndexed || source.access !== 'available'}
+            isLoading={isBrowsing}
+            loadingLabel={`Opening ${source.name}`}
+            onClick={() => {
+              void onBrowseSource(source.id);
+            }}
+          >
+            <FolderOpen aria-hidden="true" />
+            Browse files
+          </Button>
+
+          <Button
+            className="library-source__index-button"
+            size="medium"
+            variant="primary"
+            fullWidth
+            disabled={source.access !== 'available'}
+            isLoading={isIndexing}
+            loadingLabel={`Indexing ${source.name}`}
+            onClick={() => {
+              onIndexSource(source.id);
+            }}
+          >
+            <RefreshCw aria-hidden="true" />
+            {hasBeenIndexed ? 'Refresh index' : 'Index now'}
+          </Button>
+        </div>
       </div>
     </article>
+  );
+}
+
+function formatEntryModifiedDate(timestampMs: number | null): string {
+  if (timestampMs === null) {
+    return 'Unknown';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestampMs));
+}
+
+function formatEntryType(entry: FileEntry): string {
+  if (entry.kind === 'directory') {
+    return 'Folder';
+  }
+
+  return entry.extension ? `${entry.extension.toUpperCase()} file` : 'File';
+}
+
+interface IndexedFileBrowserProps {
+  source: LibrarySource | null;
+  browser: IndexedFileBrowserViewState;
+}
+
+function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React.JSX.Element {
+  const sourceName = source?.name ?? 'Indexed files';
+
+  return (
+    <section className="indexed-browser" aria-label={`Indexed files for ${sourceName}`}>
+      <header className="indexed-browser__header">
+        <div className="indexed-browser__heading">
+          <span className="indexed-browser__heading-icon" aria-hidden="true">
+            <FolderOpen />
+          </span>
+
+          <div>
+            <span>Indexed file browser</span>
+            <h2>{sourceName}</h2>
+            <p>Browse locally stored metadata without uploading file contents.</p>
+          </div>
+        </div>
+
+        <Button
+          size="small"
+          variant="ghost"
+          aria-label="Close indexed file browser"
+          onClick={browser.closeBrowser}
+        >
+          <X aria-hidden="true" />
+          Close
+        </Button>
+      </header>
+
+      <div className="indexed-browser__toolbar">
+        <div className="indexed-browser__navigation-actions">
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={!browser.canNavigateBack || browser.isLoading}
+            onClick={() => {
+              void browser.navigateBack();
+            }}
+          >
+            <ArrowLeft aria-hidden="true" />
+            Back
+          </Button>
+
+          <Button
+            size="small"
+            variant="secondary"
+            disabled={browser.selectedSourceId === null || browser.isLoading}
+            onClick={() => {
+              void browser.refreshDirectory();
+            }}
+          >
+            <RefreshCw aria-hidden="true" />
+            Refresh
+          </Button>
+        </div>
+
+        <nav className="indexed-browser__breadcrumbs" aria-label="Current indexed directory">
+          <span>{sourceName}</span>
+
+          {browser.navigationPath.map((directory) => (
+            <span key={directory.id}>
+              <ChevronRight aria-hidden="true" />
+              {directory.name}
+            </span>
+          ))}
+        </nav>
+
+        <span className="indexed-browser__count">
+          {browser.total.toLocaleString()} {browser.total === 1 ? 'entry' : 'entries'}
+        </span>
+      </div>
+
+      {browser.error ? (
+        <p className="indexed-browser__error" role="alert">
+          {browser.error}
+        </p>
+      ) : null}
+
+      {browser.isLoading ? (
+        <div className="indexed-browser__loading" aria-busy="true">
+          <span className="workspace__loading-indicator" aria-hidden="true" />
+          <strong>Loading indexed files</strong>
+          <p>FilePilot is reading metadata from the local index.</p>
+        </div>
+      ) : browser.entries.length === 0 ? (
+        <div className="indexed-browser__empty">
+          <FolderOpen aria-hidden="true" />
+          <strong>This folder is empty</strong>
+          <p>No indexed files or folders were found at this level.</p>
+        </div>
+      ) : (
+        <div className="indexed-browser__table-wrapper">
+          <table className="indexed-browser__table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Type</th>
+                <th scope="col">Size</th>
+                <th scope="col">Modified</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {browser.entries.map((entry) => {
+                const EntryIcon = entry.kind === 'directory' ? Folder : FileIcon;
+
+                return (
+                  <tr key={entry.id}>
+                    <td>
+                      {entry.kind === 'directory' ? (
+                        <button
+                          type="button"
+                          className="indexed-browser__entry-button"
+                          onClick={() => {
+                            void browser.openDirectory(entry);
+                          }}
+                        >
+                          <span
+                            className="indexed-browser__entry-icon"
+                            data-kind={entry.kind}
+                            aria-hidden="true"
+                          >
+                            <EntryIcon />
+                          </span>
+
+                          <span>
+                            <strong>{entry.name}</strong>
+                            <small title={entry.relativePath}>{entry.relativePath}</small>
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="indexed-browser__entry">
+                          <span
+                            className="indexed-browser__entry-icon"
+                            data-kind={entry.kind}
+                            aria-hidden="true"
+                          >
+                            <EntryIcon />
+                          </span>
+
+                          <span>
+                            <strong>{entry.name}</strong>
+                            <small title={entry.relativePath}>{entry.relativePath}</small>
+                          </span>
+                        </div>
+                      )}
+                    </td>
+
+                    <td>{formatEntryType(entry)}</td>
+
+                    <td>{entry.kind === 'directory' ? '—' : formatStorageSize(entry.sizeBytes)}</td>
+
+                    <td>
+                      <time
+                        dateTime={
+                          entry.modifiedAtMs === null
+                            ? undefined
+                            : new Date(entry.modifiedAtMs).toISOString()
+                        }
+                      >
+                        {formatEntryModifiedDate(entry.modifiedAtMs)}
+                      </time>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!browser.isLoading && browser.entries.length > 0 ? (
+        <footer className="indexed-browser__footer">
+          Showing {browser.entries.length.toLocaleString()} of {browser.total.toLocaleString()}{' '}
+          indexed entries
+        </footer>
+      ) : null}
+    </section>
   );
 }
 

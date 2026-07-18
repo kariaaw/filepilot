@@ -7,3 +7,8 @@ export {
   useIndexedFileBrowser,
   type IndexedFileBrowserViewState,
 } from './use-indexed-file-browser';
+
+export {
+  useIndexedEntrySearch,
+  type IndexedEntrySearchViewState,
+} from './use-indexed-entry-search';

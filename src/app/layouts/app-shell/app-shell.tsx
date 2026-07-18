@@ -10,9 +10,10 @@ import {
   Search,
   Settings,
   Shield,
+  X,
   type LucideIcon,
 } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import clsx from 'clsx';
 
 import { ThemeSwitcher } from '@/app/components/theme-switcher';
@@ -60,8 +61,12 @@ interface AppShellProps {
   activeView: AppView;
   connectedFolderCount: number;
   isAddingFolder: boolean;
+  searchText: string;
+  isSearching: boolean;
   onAddFolder: () => void;
   onNavigate: (view: AppView) => void;
+  onSearchTextChange: (text: string) => void;
+  onClearSearch: () => void;
   children: ReactNode;
 }
 
@@ -75,11 +80,55 @@ export function AppShell({
   activeView,
   connectedFolderCount,
   isAddingFolder,
+  searchText,
+  isSearching,
   onAddFolder,
   onNavigate,
+  onSearchTextChange,
+  onClearSearch,
   children,
 }: AppShellProps): React.JSX.Element {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleGlobalSearchShortcut = (event: KeyboardEvent): void => {
+      const isSearchShortcut =
+        (event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'k';
+
+      if (isSearchShortcut) {
+        event.preventDefault();
+
+        const searchInput = searchInputRef.current;
+
+        searchInput?.focus();
+
+        if (searchInput) {
+          const cursorPosition = searchInput.value.length;
+
+          searchInput.setSelectionRange(cursorPosition, cursorPosition);
+        }
+
+        return;
+      }
+
+      if (
+        event.key === 'Escape' &&
+        document.activeElement === searchInputRef.current &&
+        searchText
+      ) {
+        event.preventDefault();
+        onClearSearch();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalSearchShortcut);
+
+    return () => {
+      window.removeEventListener('keydown', handleGlobalSearchShortcut);
+    };
+  }, [onClearSearch, searchText]);
 
   const storageDescription =
     connectedFolderCount === 0
@@ -164,19 +213,39 @@ export function AppShell({
 
       <div className={styles.main}>
         <header className={styles.topbar}>
-          <div className={styles.search}>
+          <div className={styles.search} data-searching={isSearching ? 'true' : undefined}>
             <Search className={styles.searchIcon} aria-hidden="true" />
 
             <input
+              ref={searchInputRef}
               className={styles.searchInput}
               type="search"
-              placeholder="Search files, folders, or natural language..."
-              aria-label="Search FilePilot"
+              value={searchText}
+              maxLength={256}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="Search indexed files and folders..."
+              aria-label="Search indexed files and folders"
+              aria-busy={isSearching}
+              onChange={(event) => {
+                onSearchTextChange(event.currentTarget.value);
+              }}
             />
 
-            <span className={styles.searchShortcut} aria-hidden="true">
-              Ctrl K
-            </span>
+            {searchText ? (
+              <button
+                type="button"
+                className={styles.searchClear}
+                aria-label="Clear search"
+                onClick={onClearSearch}
+              >
+                <X aria-hidden="true" />
+              </button>
+            ) : (
+              <span className={styles.searchShortcut} aria-hidden="true">
+                Ctrl K
+              </span>
+            )}
           </div>
 
           <div className={styles.topbarActions}>

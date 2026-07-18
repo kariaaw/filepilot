@@ -34,3 +34,11 @@ export {
   type TauriIndexedEntryContentAdapterDependencies,
   type TauriReadLibraryEntryResponse,
 } from './tauri-indexed-entry-content-adapter';
+
+export {
+  TauriIndexedEntryHashAdapter,
+  type NativeEntryHasher,
+  type NativeHashPathJoiner,
+  type TauriHashLibraryEntryResponse,
+  type TauriIndexedEntryHashAdapterDependencies,
+} from './tauri-indexed-entry-hash-adapter';

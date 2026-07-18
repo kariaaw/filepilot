@@ -1,15 +1,26 @@
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use tauri_plugin_fs::FsExt;
 
 const MAXIMUM_PREVIEW_BYTES: u64 = 256 * 1024;
+const HASH_BUFFER_BYTES: usize = 64 * 1024;
 
 #[derive(Serialize)]
 struct ReadLibraryEntryResponse {
     bytes: Vec<u8>,
     truncated: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HashLibraryEntryResponse {
+    algorithm: &'static str,
+    value: String,
+    size_bytes: u64,
 }
 
 #[tauri::command]
@@ -144,6 +155,155 @@ fn read_library_entry_bytes(
     Ok(ReadLibraryEntryResponse { bytes, truncated })
 }
 
+fn hash_reader_sha256<R: Read>(reader: &mut R) -> std::io::Result<(String, u64)> {
+    let mut hasher = Sha256::new();
+    let mut buffer = [0_u8; HASH_BUFFER_BYTES];
+    let mut size_bytes = 0_u64;
+
+    loop {
+        let read_count = reader.read(&mut buffer)?;
+
+        if read_count == 0 {
+            break;
+        }
+
+        hasher.update(&buffer[..read_count]);
+
+        size_bytes = size_bytes.checked_add(read_count as u64).ok_or_else(|| {
+            std::io::Error::other("The hashed file size exceeds the supported range.")
+        })?;
+    }
+
+    Ok((format!("{:x}", hasher.finalize()), size_bytes))
+}
+
+fn hash_file_sha256(
+    canonical_path: &Path,
+    expected_size_bytes: u64,
+    expected_modified: Option<std::time::SystemTime>,
+) -> Result<HashLibraryEntryResponse, String> {
+    let mut file = File::open(canonical_path).map_err(|error| {
+        format!("FilePilot could not open the selected file for hashing: {error}")
+    })?;
+
+    let (value, size_bytes) = hash_reader_sha256(&mut file)
+        .map_err(|error| format!("FilePilot could not hash the selected file: {error}"))?;
+
+    let final_metadata = file
+        .metadata()
+        .map_err(|error| format!("FilePilot could not verify the hashed file: {error}"))?;
+
+    let final_modified = final_metadata.modified().ok();
+
+    if size_bytes != expected_size_bytes
+        || final_metadata.len() != expected_size_bytes
+        || final_modified != expected_modified
+    {
+        return Err(
+            "The selected file changed while FilePilot was hashing it. Run duplicate analysis again."
+                .to_owned(),
+        );
+    }
+
+    Ok(HashLibraryEntryResponse {
+        algorithm: "sha256",
+        value,
+        size_bytes,
+    })
+}
+
+/// Calculates SHA-256 for one approved local file without loading it fully
+/// into memory.
+///
+/// The path and its canonical target must both remain inside Tauri's approved
+/// file-system scope. Hashing runs on a blocking worker thread and reads the
+/// file incrementally using a fixed-size buffer.
+#[tauri::command]
+async fn hash_library_entry_sha256(
+    app: tauri::AppHandle,
+    path: String,
+) -> Result<HashLibraryEntryResponse, String> {
+    let normalized_path = path.trim();
+
+    if normalized_path.is_empty() {
+        return Err("A library entry path is required for hashing.".to_owned());
+    }
+
+    let scope = app.fs_scope();
+
+    if !scope.is_allowed(normalized_path) {
+        return Err(
+            "FilePilot cannot hash this entry because it is outside an approved library source."
+                .to_owned(),
+        );
+    }
+
+    let canonical_path = std::fs::canonicalize(normalized_path).map_err(|error| {
+        format!("FilePilot could not resolve the selected file for hashing: {error}")
+    })?;
+
+    if !scope.is_allowed(&canonical_path) {
+        return Err(
+            "FilePilot cannot hash this entry because its resolved path is outside an approved library source."
+                .to_owned(),
+        );
+    }
+
+    let metadata = std::fs::metadata(&canonical_path).map_err(|error| {
+        format!("FilePilot could not inspect the selected file for hashing: {error}")
+    })?;
+
+    if !metadata.is_file() {
+        return Err("Only regular files can receive a content hash.".to_owned());
+    }
+
+    let expected_size_bytes = metadata.len();
+    let expected_modified = metadata.modified().ok();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        hash_file_sha256(&canonical_path, expected_size_bytes, expected_modified)
+    })
+    .await
+    .map_err(|error| format!("FilePilot's hashing worker failed: {error}"))?
+}
+
+#[cfg(test)]
+mod hash_tests {
+    use std::io::Cursor;
+
+    use sha2::{Digest, Sha256};
+
+    use super::{hash_reader_sha256, HASH_BUFFER_BYTES};
+
+    #[test]
+    fn hashes_an_empty_file_using_the_standard_sha256_value() {
+        let mut reader = Cursor::new(Vec::<u8>::new());
+
+        let (value, size_bytes) =
+            hash_reader_sha256(&mut reader).expect("empty hash should succeed");
+
+        assert_eq!(
+            value,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        assert_eq!(size_bytes, 0);
+    }
+
+    #[test]
+    fn hashes_content_larger_than_multiple_streaming_buffers() {
+        let bytes = vec![0x5a_u8; (HASH_BUFFER_BYTES * 2) + 17];
+        let expected_value = format!("{:x}", Sha256::digest(&bytes));
+
+        let mut reader = Cursor::new(bytes.clone());
+
+        let (value, size_bytes) =
+            hash_reader_sha256(&mut reader).expect("streaming hash should succeed");
+
+        assert_eq!(value, expected_value);
+        assert_eq!(size_bytes, bytes.len() as u64);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -153,6 +313,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            hash_library_entry_sha256,
             open_library_entry,
             read_library_entry_bytes,
             restore_library_source_scope

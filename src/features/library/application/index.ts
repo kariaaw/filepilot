@@ -21,6 +21,7 @@ export {
   LibraryWorkspace,
   type LibraryConnectionSnapshot,
   type LibraryDirectoryBrowsingWorkflow,
+  type LibraryDuplicateAnalysisWorkflow,
   type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
   type LibraryIndexedTextPreviewWorkflow,
@@ -91,3 +92,15 @@ export {
   type PreviewIndexedTextEntryInput,
   type PreviewIndexedTextEntryResult,
 } from './preview-indexed-text-entry';
+
+export {
+  AnalyzeDuplicateFiles,
+  type AnalyzeDuplicateFilesDependencies,
+  type AnalyzeDuplicateFilesOptions,
+  type AnalyzeDuplicateFilesResult,
+  type DuplicateAnalysisFileRepository,
+  type DuplicateAnalysisPhase,
+  type DuplicateAnalysisProgress,
+  type DuplicateAnalysisSourceRepository,
+  type DuplicateFileGroup,
+} from './analyze-duplicate-files';

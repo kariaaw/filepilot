@@ -22,3 +22,5 @@ export {
   useIndexedTextPreview,
   type IndexedTextPreviewViewState,
 } from './use-indexed-text-preview';
+
+export { useDuplicateAnalysis, type DuplicateAnalysisViewState } from './use-duplicate-analysis';

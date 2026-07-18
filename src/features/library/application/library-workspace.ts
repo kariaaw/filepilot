@@ -1,4 +1,9 @@
 import type { LibrarySource } from '@/core/entities/library-source';
+import type {
+  AnalyzeDuplicateFiles,
+  AnalyzeDuplicateFilesOptions,
+  AnalyzeDuplicateFilesResult,
+} from '@/features/library/application/analyze-duplicate-files';
 import type { LibrarySourceRepository } from '@/core/ports/library-source-repository';
 import type {
   BrowseLibraryDirectory,
@@ -68,6 +73,11 @@ export type LibraryIndexedEntryOpeningWorkflow = Pick<OpenIndexedEntry, 'execute
 export type LibraryIndexedTextPreviewWorkflow = Pick<PreviewIndexedTextEntry, 'execute'>;
 
 /**
+ * Narrow duplicate-analysis capability consumed by the workspace.
+ */
+export type LibraryDuplicateAnalysisWorkflow = Pick<AnalyzeDuplicateFiles, 'execute'>;
+
+/**
  * Narrow source-removal capability consumed by the workspace.
  */
 export type LibrarySourceRemovalWorkflow = Pick<RemoveLibrarySource, 'execute'>;
@@ -84,6 +94,7 @@ export interface LibraryWorkspaceDependencies {
   searchIndexedEntries: LibraryIndexedEntrySearchWorkflow;
   openIndexedEntry: LibraryIndexedEntryOpeningWorkflow;
   previewIndexedTextEntry: LibraryIndexedTextPreviewWorkflow;
+  analyzeDuplicateFiles: LibraryDuplicateAnalysisWorkflow;
   removeLibrarySource: LibrarySourceRemovalWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
@@ -213,6 +224,15 @@ export class LibraryWorkspace {
     input: PreviewIndexedTextEntryInput,
   ): Promise<PreviewIndexedTextEntryResult> {
     return this.dependencies.previewIndexedTextEntry.execute(input);
+  }
+
+  /**
+   * Calculates local SHA-256 hashes and returns exact duplicate groups.
+   */
+  async analyzeDuplicates(
+    options: AnalyzeDuplicateFilesOptions = {},
+  ): Promise<AnalyzeDuplicateFilesResult> {
+    return this.dependencies.analyzeDuplicateFiles.execute(options);
   }
 
   /**

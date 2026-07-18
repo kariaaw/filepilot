@@ -261,6 +261,13 @@ function compareRecords(
     case 'name':
       return fileNameCollator.compare(left.name, right.name) * multiplier;
 
+    case 'kind':
+      if (left.kind === right.kind) {
+        return 0;
+      }
+
+      return (left.kind === 'directory' ? -1 : 1) * multiplier;
+
     case 'sizeBytes':
       return (left.sizeBytes - right.sizeBytes) * multiplier;
 

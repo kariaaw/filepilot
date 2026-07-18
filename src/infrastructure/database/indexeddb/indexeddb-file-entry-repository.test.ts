@@ -414,4 +414,66 @@ describe('IndexedDbFileEntryRepository', () => {
 
     await expect(repository.getById(existingEntry.id)).resolves.toEqual(existingEntry);
   });
+  it('sorts directories before files and then applies natural name ordering', async () => {
+    await repository.saveMany([
+      createFileEntry({
+        id: 'zeta-directory',
+        sourceId: 'source-1',
+        parentId: null,
+        name: 'Folder 10',
+        relativePath: 'Folder 10',
+        kind: 'directory',
+        extension: null,
+        mimeType: null,
+        category: 'other',
+        sizeBytes: 0,
+      }),
+      createFileEntry({
+        id: 'alpha-directory',
+        sourceId: 'source-1',
+        parentId: null,
+        name: 'Folder 2',
+        relativePath: 'Folder 2',
+        kind: 'directory',
+        extension: null,
+        mimeType: null,
+        category: 'other',
+        sizeBytes: 0,
+      }),
+      createFileEntry({
+        id: 'beta-file',
+        sourceId: 'source-1',
+        parentId: null,
+        name: 'File 10.txt',
+        relativePath: 'File 10.txt',
+        extension: 'txt',
+        mimeType: 'text/plain',
+        category: 'text',
+      }),
+      createFileEntry({
+        id: 'alpha-file',
+        sourceId: 'source-1',
+        parentId: null,
+        name: 'File 2.txt',
+        relativePath: 'File 2.txt',
+        extension: 'txt',
+        mimeType: 'text/plain',
+        category: 'text',
+      }),
+    ]);
+
+    const result = await repository.find({
+      sourceId: 'source-1',
+      parentId: null,
+      sortBy: 'kind',
+      sortDirection: 'ascending',
+    });
+
+    expect(result.items.map((entry) => entry.name)).toEqual([
+      'Folder 2',
+      'Folder 10',
+      'File 2.txt',
+      'File 10.txt',
+    ]);
+  });
 });

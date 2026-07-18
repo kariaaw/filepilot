@@ -10,6 +10,14 @@ export {
 } from './connect-library-source';
 
 export {
+  BrowseLibraryDirectory,
+  type BrowseLibraryDirectoryDependencies,
+  type BrowseLibraryDirectoryInput,
+  type BrowseLibraryDirectoryResult,
+  type LibraryDirectoryBrowsingRepository,
+} from './browse-library-directory';
+
+export {
   LibraryWorkspace,
   type LibraryConnectionSnapshot,
   type LibrarySourceConnectionWorkflow,

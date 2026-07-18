@@ -15,6 +15,11 @@ import type {
   IndexLibrarySourceResult,
 } from '@/features/library/application/index-library-source';
 import type {
+  OpenIndexedEntry,
+  OpenIndexedEntryInput,
+  OpenIndexedEntryResult,
+} from '@/features/library/application/open-indexed-entry';
+import type {
   SearchIndexedEntries,
   SearchIndexedEntriesInput,
   SearchIndexedEntriesResult,
@@ -44,6 +49,11 @@ export type LibraryDirectoryBrowsingWorkflow = Pick<BrowseLibraryDirectory, 'exe
 export type LibraryIndexedEntrySearchWorkflow = Pick<SearchIndexedEntries, 'execute'>;
 
 /**
+ * Narrow indexed-entry native operation capability consumed by the workspace.
+ */
+export type LibraryIndexedEntryOpeningWorkflow = Pick<OpenIndexedEntry, 'execute'>;
+
+/**
  * Narrow indexing capability consumed by the presentation-facing facade.
  */
 export type LibrarySourceIndexingWorkflow = Pick<IndexLibrarySource, 'execute'>;
@@ -53,6 +63,7 @@ export interface LibraryWorkspaceDependencies {
   connectLibrarySource: LibrarySourceConnectionWorkflow;
   browseLibraryDirectory: LibraryDirectoryBrowsingWorkflow;
   searchIndexedEntries: LibraryIndexedEntrySearchWorkflow;
+  openIndexedEntry: LibraryIndexedEntryOpeningWorkflow;
   indexLibrarySource: LibrarySourceIndexingWorkflow;
 
   /**
@@ -161,6 +172,13 @@ export class LibraryWorkspace {
    */
   async searchEntries(input: SearchIndexedEntriesInput): Promise<SearchIndexedEntriesResult> {
     return this.dependencies.searchIndexedEntries.execute(input);
+  }
+
+  /**
+   * Opens or reveals one indexed entry through the active platform adapter.
+   */
+  async openEntry(input: OpenIndexedEntryInput): Promise<OpenIndexedEntryResult> {
+    return this.dependencies.openIndexedEntry.execute(input);
   }
 
   /**

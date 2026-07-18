@@ -196,6 +196,8 @@ export type DirectoryScanAdapter = Pick<FileSystemAdapter, 'platform' | 'scanDir
  * operating-system paths never enter the application or presentation layers.
  */
 export interface IndexedEntryOpenAdapter {
+  readonly platform: LibrarySourcePlatform;
+
   openEntry(accessKey: string, relativePath: string): Promise<void>;
   revealEntry(accessKey: string, relativePath: string): Promise<void>;
 }

@@ -13,12 +13,17 @@ import type {
   IndexLibrarySourceResult,
 } from '@/features/library/application/index-library-source';
 import type {
+  OpenIndexedEntryInput,
+  OpenIndexedEntryResult,
+} from '@/features/library/application/open-indexed-entry';
+import type {
   SearchIndexedEntriesInput,
   SearchIndexedEntriesResult,
 } from '@/features/library/application/search-indexed-entries';
 import {
   LibraryWorkspace,
   type LibraryDirectoryBrowsingWorkflow,
+  type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceIndexingWorkflow,
@@ -145,6 +150,18 @@ class StubIndexedEntrySearchWorkflow implements LibraryIndexedEntrySearchWorkflo
   }
 }
 
+class StubIndexedEntryOpeningWorkflow implements LibraryIndexedEntryOpeningWorkflow {
+  readonly calls: OpenIndexedEntryInput[] = [];
+
+  constructor(private readonly result: OpenIndexedEntryResult) {}
+
+  async execute(input: OpenIndexedEntryInput): Promise<OpenIndexedEntryResult> {
+    this.calls.push(input);
+
+    return this.result;
+  }
+}
+
 function createUnusedDirectoryBrowsingWorkflow(): StubDirectoryBrowsingWorkflow {
   return new StubDirectoryBrowsingWorkflow({
     sourceId: 'unused-source',
@@ -164,6 +181,21 @@ function createUnusedSearchWorkflow(): StubIndexedEntrySearchWorkflow {
     total: 0,
     offset: 0,
     limit: 50,
+  });
+}
+
+function createUnusedOpeningWorkflow(): StubIndexedEntryOpeningWorkflow {
+  const source = createSource('unused-open-source', 'Unused open source');
+
+  const entry = createFileEntry({
+    id: 'unused-open-entry',
+    sourceId: source.id,
+  });
+
+  return new StubIndexedEntryOpeningWorkflow({
+    operation: 'open',
+    entry,
+    source,
   });
 }
 
@@ -188,6 +220,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
       pageSize: 2,
     });
@@ -228,6 +261,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -257,6 +291,7 @@ describe('LibraryWorkspace', () => {
       connectLibrarySource: workflow,
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -286,6 +321,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -327,6 +363,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: indexingWorkflow,
     });
 
@@ -369,6 +406,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: browsingWorkflow,
       searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -410,6 +448,7 @@ describe('LibraryWorkspace', () => {
       }),
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: searchWorkflow,
+      openIndexedEntry: createUnusedOpeningWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
 
@@ -423,6 +462,45 @@ describe('LibraryWorkspace', () => {
     await expect(workspace.searchEntries(input)).resolves.toEqual(result);
 
     expect(searchWorkflow.calls).toEqual([input]);
+  });
+
+  it('opens indexed entries through the workspace facade', async () => {
+    const source = createSource('tauri-directory:documents', 'Documents');
+
+    const entry = createFileEntry({
+      id: 'entry-report',
+      sourceId: source.id,
+      name: 'report.pdf',
+      relativePath: 'Reports/report.pdf',
+    });
+
+    const result: OpenIndexedEntryResult = {
+      operation: 'reveal',
+      entry,
+      source,
+    };
+
+    const openingWorkflow = new StubIndexedEntryOpeningWorkflow(result);
+
+    const workspace = new LibraryWorkspace({
+      librarySourceRepository: new MemoryListingRepository(),
+      connectLibrarySource: new StubConnectionWorkflow({
+        status: 'cancelled',
+      }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
+      searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: openingWorkflow,
+      indexLibrarySource: createUnusedIndexingWorkflow(),
+    });
+
+    const input: OpenIndexedEntryInput = {
+      entryId: entry.id,
+      operation: 'reveal',
+    };
+
+    await expect(workspace.openEntry(input)).resolves.toEqual(result);
+
+    expect(openingWorkflow.calls).toEqual([input]);
   });
 
   it('rejects invalid repository page sizes', () => {
@@ -439,6 +517,7 @@ describe('LibraryWorkspace', () => {
           connectLibrarySource: connectionWorkflow,
           browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           searchIndexedEntries: createUnusedSearchWorkflow(),
+          openIndexedEntry: createUnusedOpeningWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 0,
         }),
@@ -451,6 +530,7 @@ describe('LibraryWorkspace', () => {
           connectLibrarySource: connectionWorkflow,
           browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           searchIndexedEntries: createUnusedSearchWorkflow(),
+          openIndexedEntry: createUnusedOpeningWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 501,
         }),

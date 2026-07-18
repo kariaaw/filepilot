@@ -56,6 +56,8 @@ function resolveSafeRelativeSegments(relativePath: string): readonly string[] {
  * platform-aware path API.
  */
 export class TauriIndexedEntryOpenAdapter implements IndexedEntryOpenAdapter {
+  readonly platform = 'tauri' as const;
+
   private readonly joinPath: NativePathJoiner;
   private readonly openNativePath: NativePathOpener;
   private readonly revealNativeItem: NativeItemRevealer;

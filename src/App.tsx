@@ -25,8 +25,10 @@ import type { AppView } from '@/app/navigation/app-view';
 import type { FileEntry } from '@/core/entities/file-entry';
 import type { LibrarySource } from '@/core/entities/library-source';
 import {
+  useIndexedEntrySearch,
   useIndexedFileBrowser,
   useLibraryWorkspace,
+  type IndexedEntrySearchViewState,
   type IndexedFileBrowserViewState,
 } from '@/features/library/presentation';
 import { Button } from '@/shared/components/button';
@@ -108,6 +110,8 @@ function App(): React.JSX.Element {
 
   const fileBrowser = useIndexedFileBrowser(libraryWorkspace);
 
+  const indexedSearch = useIndexedEntrySearch(libraryWorkspace);
+
   const libraryStatistics = useMemo(
     () =>
       sources.reduce(
@@ -140,10 +144,16 @@ function App(): React.JSX.Element {
       activeView={activeView}
       connectedFolderCount={total}
       isAddingFolder={isConnecting}
+      searchText={indexedSearch.text}
+      isSearching={indexedSearch.isSearching}
       onAddFolder={handleAddFolder}
       onNavigate={setActiveView}
+      onSearchTextChange={indexedSearch.setText}
+      onClearSearch={indexedSearch.clearSearch}
     >
-      {activeView === 'overview' ? (
+      {indexedSearch.hasSearchText ? (
+        <IndexedSearchResultsPage search={indexedSearch} sources={sources} />
+      ) : activeView === 'overview' ? (
         <OverviewPage
           sources={sources}
           connectedFolderCount={total}
@@ -171,6 +181,159 @@ function App(): React.JSX.Element {
         <EmptyWorkspacePage content={VIEW_CONTENT[activeView]} />
       )}
     </AppShell>
+  );
+}
+
+interface IndexedSearchResultsPageProps {
+  search: IndexedEntrySearchViewState;
+  sources: readonly LibrarySource[];
+}
+
+function IndexedSearchResultsPage({
+  search,
+  sources,
+}: IndexedSearchResultsPageProps): React.JSX.Element {
+  const sourceNames = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.name] as const)),
+    [sources],
+  );
+
+  const isWaitingForResults = search.isSearching || !search.hasCompletedSearch;
+
+  return (
+    <div className="workspace indexed-search">
+      <header className="workspace__header workspace__header--actions">
+        <div>
+          <span>Local metadata search</span>
+          <h1>Search results</h1>
+          <p>
+            Results for <strong>“{search.normalizedText}”</strong> are read directly from your
+            private local index.
+          </p>
+        </div>
+
+        <div className="indexed-search__actions">
+          <Button
+            variant="secondary"
+            disabled={search.isSearching}
+            onClick={() => {
+              void search.refreshSearch();
+            }}
+          >
+            <RefreshCw aria-hidden="true" />
+            Refresh
+          </Button>
+
+          <Button variant="ghost" onClick={search.clearSearch}>
+            <X aria-hidden="true" />
+            Clear
+          </Button>
+        </div>
+      </header>
+
+      {search.error ? (
+        <p className="workspace__feedback workspace__feedback--error" role="alert">
+          {search.error}
+        </p>
+      ) : null}
+
+      {isWaitingForResults ? (
+        <section className="workspace__empty indexed-search__state" aria-busy="true">
+          <span className="workspace__loading-indicator" aria-hidden="true" />
+
+          <h2>Searching your local index</h2>
+          <p>FilePilot is matching indexed file and folder metadata.</p>
+        </section>
+      ) : search.error ? null : search.results.length === 0 ? (
+        <section className="workspace__empty indexed-search__state">
+          <span className="workspace__empty-icon" aria-hidden="true">
+            <FileSearch />
+          </span>
+
+          <h2>No indexed entries found</h2>
+
+          <p>Try another file name, folder name, extension, or part of an indexed path.</p>
+        </section>
+      ) : (
+        <section
+          className="indexed-search__panel"
+          aria-label={`Search results for ${search.normalizedText}`}
+        >
+          <div className="indexed-search__summary">
+            <span>
+              <strong>{search.total.toLocaleString()}</strong>{' '}
+              {search.total === 1 ? 'matching entry' : 'matching entries'}
+            </span>
+
+            <span>Names and indexed paths only</span>
+          </div>
+
+          <div className="indexed-search__table-wrapper">
+            <table className="indexed-search__table">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Source</th>
+                  <th scope="col">Type</th>
+                  <th scope="col">Size</th>
+                  <th scope="col">Modified</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {search.results.map((entry) => {
+                  const EntryIcon = entry.kind === 'directory' ? Folder : FileIcon;
+
+                  return (
+                    <tr key={entry.id}>
+                      <td>
+                        <div className="indexed-search__entry">
+                          <span
+                            className="indexed-search__entry-icon"
+                            data-kind={entry.kind}
+                            aria-hidden="true"
+                          >
+                            <EntryIcon />
+                          </span>
+
+                          <span className="indexed-search__entry-content">
+                            <strong>{entry.name}</strong>
+                            <small title={entry.relativePath}>{entry.relativePath}</small>
+                          </span>
+                        </div>
+                      </td>
+
+                      <td>{sourceNames.get(entry.sourceId) ?? 'Unknown source'}</td>
+
+                      <td>{formatEntryType(entry)}</td>
+
+                      <td>{formatStorageSize(entry.sizeBytes)}</td>
+
+                      <td>
+                        <time
+                          dateTime={
+                            entry.modifiedAtMs === null
+                              ? undefined
+                              : new Date(entry.modifiedAtMs).toISOString()
+                          }
+                        >
+                          {formatEntryModifiedDate(entry.modifiedAtMs)}
+                        </time>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <footer className="indexed-search__footer">
+            Showing {search.results.length.toLocaleString()} of {search.total.toLocaleString()}{' '}
+            matching indexed entries
+          </footer>
+        </section>
+      )}
+    </div>
   );
 }
 

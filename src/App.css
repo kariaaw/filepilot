@@ -165,11 +165,12 @@
 }
 
 .stat-card {
-  display: flex;
+  display: grid;
   min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
@@ -177,38 +178,49 @@
 }
 
 .stat-card__icon {
-  display: grid;
-  flex-shrink: 0;
-  width: 2.75rem;
-  height: 2.75rem;
-  place-items: center;
-  border-radius: var(--radius-lg);
-  background: var(--color-info-subtle);
-  color: var(--color-info);
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2.625rem;
+  height: 2.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-hover);
+  color: var(--color-brand-500);
 }
 
 .stat-card__icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.stat-card strong,
-.stat-card span {
   display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke-width: 1.8;
 }
 
-.stat-card strong {
+.stat-card__content {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.stat-card__content strong {
+  display: block;
   color: var(--color-text-primary);
   font-size: 1.375rem;
   font-weight: 760;
+  line-height: 1.1;
   letter-spacing: -0.03em;
 }
 
-.stat-card div > span {
-  margin-top: var(--space-1);
+.stat-card__content > span {
+  display: block;
+  overflow: hidden;
   color: var(--color-text-tertiary);
   font-size: 0.75rem;
   font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .overview__grid {
@@ -746,6 +758,10 @@
  * Indexed file browser
  * -------------------------------------------------------------------------- */
 
+/* --------------------------------------------------------------------------
+ * Indexed file browser
+ * -------------------------------------------------------------------------- */
+
 .library-source__button-stack {
   display: grid;
   gap: var(--space-2);
@@ -772,72 +788,83 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
-  box-shadow: var(--shadow-sm);
 }
 
 .indexed-browser__header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  padding: var(--space-5);
+  padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border);
 }
 
 .indexed-browser__heading {
-  display: flex;
+  display: grid;
   min-width: 0;
-  align-items: flex-start;
-  gap: var(--space-3);
+  gap: 0.15rem;
 }
 
-.indexed-browser__heading-icon {
+.indexed-browser__eyebrow {
   display: inline-flex;
-  flex: 0 0 auto;
+  width: fit-content;
   align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: var(--radius-md);
-  background: var(--color-surface-hover);
+  gap: var(--space-2);
   color: var(--color-brand-600);
-}
-
-.indexed-browser__heading-icon svg {
-  width: 1.35rem;
-  height: 1.35rem;
-}
-
-.indexed-browser__heading > div {
-  min-width: 0;
-}
-
-.indexed-browser__heading span {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 750;
   letter-spacing: 0.08em;
+  line-height: 1.2;
   text-transform: uppercase;
 }
 
+.indexed-browser__eyebrow svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
 .indexed-browser__heading h2 {
-  margin: 0;
+  overflow: hidden;
+  margin: var(--space-1) 0 0;
   color: var(--color-text-primary);
-  font-size: 1.2rem;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .indexed-browser__heading p {
-  margin: var(--space-1) 0 0;
+  margin: 0;
   color: var(--color-text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
-.indexed-browser__header > button svg,
-.indexed-browser__navigation-actions button svg {
-  width: 1rem;
-  height: 1rem;
+.indexed-browser__close-button,
+.indexed-browser__toolbar-button {
+  min-height: 2.125rem;
+  color: var(--color-text-secondary);
+}
+
+.indexed-browser__close-button > span,
+.indexed-browser__toolbar-button > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.indexed-browser__close-button svg,
+.indexed-browser__toolbar-button svg {
+  flex: 0 0 auto;
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.indexed-browser__close-button:hover:not(:disabled),
+.indexed-browser__toolbar-button:hover:not(:disabled) {
+  color: var(--color-text-primary);
 }
 
 .indexed-browser__toolbar {
@@ -845,7 +872,8 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
+  min-height: 3.25rem;
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-hover);
 }
@@ -853,7 +881,9 @@
 .indexed-browser__navigation-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border);
 }
 
 .indexed-browser__breadcrumbs {
@@ -883,13 +913,14 @@
 
 .indexed-browser__breadcrumbs svg {
   flex: 0 0 auto;
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--color-text-secondary);
 }
 
 .indexed-browser__count {
   color: var(--color-text-secondary);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -906,7 +937,7 @@
 .indexed-browser__loading,
 .indexed-browser__empty {
   display: flex;
-  min-height: 14rem;
+  min-height: 13rem;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -929,8 +960,8 @@
 }
 
 .indexed-browser__empty > svg {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   color: var(--color-text-secondary);
 }
 
@@ -953,11 +984,10 @@
 }
 
 .indexed-browser__table th {
-  background: var(--color-surface);
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -996,6 +1026,10 @@
   border-bottom: 0;
 }
 
+.indexed-browser__table tbody tr {
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
 .indexed-browser__table tbody tr:hover {
   background: var(--color-surface-hover);
 }
@@ -1027,7 +1061,7 @@
 .indexed-browser__entry-button > span:last-child {
   display: grid;
   min-width: 0;
-  gap: 0.15rem;
+  gap: 0.125rem;
 }
 
 .indexed-browser__entry strong,
@@ -1043,7 +1077,7 @@
 .indexed-browser__entry-button small {
   overflow: hidden;
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1053,8 +1087,8 @@
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.875rem;
+  height: 1.875rem;
   border-radius: var(--radius-sm);
   background: var(--color-surface-hover);
   color: var(--color-text-secondary);
@@ -1065,34 +1099,38 @@
 }
 
 .indexed-browser__entry-icon svg {
-  width: 1rem;
-  height: 1rem;
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .indexed-browser__footer {
   padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--color-border);
   color: var(--color-text-secondary);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-align: right;
 }
 
 @media (max-width: 760px) {
   .indexed-browser__header {
-    align-items: stretch;
-    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .indexed-browser__header > button {
-    align-self: flex-start;
+  .indexed-browser__heading p {
+    max-width: 28rem;
   }
 
   .indexed-browser__toolbar {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
   }
 
-  .indexed-browser__count {
-    justify-self: start;
+  .indexed-browser__navigation-actions {
+    border-right: 0;
+  }
+
+  .indexed-browser__breadcrumbs {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .indexed-browser__table {

@@ -602,18 +602,17 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
     <section className="indexed-browser" aria-label={`Indexed files for ${sourceName}`}>
       <header className="indexed-browser__header">
         <div className="indexed-browser__heading">
-          <span className="indexed-browser__heading-icon" aria-hidden="true">
-            <FolderOpen />
+          <span className="indexed-browser__eyebrow">
+            <FolderOpen aria-hidden="true" />
+            Indexed files
           </span>
 
-          <div>
-            <span>Indexed file browser</span>
-            <h2>{sourceName}</h2>
-            <p>Browse locally stored metadata without uploading file contents.</p>
-          </div>
+          <h2>{sourceName}</h2>
+          <p>Browse locally stored metadata without uploading file contents.</p>
         </div>
 
         <Button
+          className="indexed-browser__close-button"
           size="small"
           variant="ghost"
           aria-label="Close indexed file browser"
@@ -627,8 +626,9 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
       <div className="indexed-browser__toolbar">
         <div className="indexed-browser__navigation-actions">
           <Button
+            className="indexed-browser__toolbar-button"
             size="small"
-            variant="secondary"
+            variant="ghost"
             disabled={!browser.canNavigateBack || browser.isLoading}
             onClick={() => {
               void browser.navigateBack();
@@ -639,8 +639,9 @@ function IndexedFileBrowser({ source, browser }: IndexedFileBrowserProps): React
           </Button>
 
           <Button
+            className="indexed-browser__toolbar-button"
             size="small"
-            variant="secondary"
+            variant="ghost"
             disabled={browser.selectedSourceId === null || browser.isLoading}
             onClick={() => {
               void browser.refreshDirectory();
@@ -789,7 +790,7 @@ function StatCard({ label, value, icon: Icon }: StatCardProps): React.JSX.Elemen
         <Icon />
       </span>
 
-      <div>
+      <div className="stat-card__content">
         <strong>{value}</strong>
         <span>{label}</span>
       </div>

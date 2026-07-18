@@ -16,6 +16,11 @@ import type {
   OpenIndexedEntryInput,
   OpenIndexedEntryResult,
 } from '@/features/library/application/open-indexed-entry';
+import {
+  DEFAULT_TEXT_PREVIEW_BYTES,
+  type PreviewIndexedTextEntryInput,
+  type PreviewIndexedTextEntryResult,
+} from '@/features/library/application/preview-indexed-text-entry';
 import type { RemoveLibrarySourceResult } from '@/features/library/application/remove-library-source';
 import type {
   SearchIndexedEntriesInput,
@@ -26,6 +31,7 @@ import {
   type LibraryDirectoryBrowsingWorkflow,
   type LibraryIndexedEntryOpeningWorkflow,
   type LibraryIndexedEntrySearchWorkflow,
+  type LibraryIndexedTextPreviewWorkflow,
   type LibrarySourceConnectionWorkflow,
   type LibrarySourceIndexingWorkflow,
   type LibrarySourceListingRepository,
@@ -164,6 +170,18 @@ class StubIndexedEntryOpeningWorkflow implements LibraryIndexedEntryOpeningWorkf
   }
 }
 
+class StubIndexedTextPreviewWorkflow implements LibraryIndexedTextPreviewWorkflow {
+  readonly calls: PreviewIndexedTextEntryInput[] = [];
+
+  constructor(private readonly result: PreviewIndexedTextEntryResult) {}
+
+  async execute(input: PreviewIndexedTextEntryInput): Promise<PreviewIndexedTextEntryResult> {
+    this.calls.push(input);
+
+    return this.result;
+  }
+}
+
 class StubRemovalWorkflow implements LibrarySourceRemovalWorkflow {
   readonly calls: string[] = [];
 
@@ -217,6 +235,30 @@ function createUnusedOpeningWorkflow(): StubIndexedEntryOpeningWorkflow {
   });
 }
 
+function createUnusedPreviewWorkflow(): StubIndexedTextPreviewWorkflow {
+  const source = createSource('unused-preview-source', 'Unused preview source');
+
+  const entry = createFileEntry({
+    id: 'unused-preview-entry',
+    sourceId: source.id,
+    name: 'unused.txt',
+    relativePath: 'unused.txt',
+    extension: 'txt',
+    mimeType: 'text/plain',
+    category: 'text',
+    kind: 'file',
+  });
+
+  return new StubIndexedTextPreviewWorkflow({
+    entry,
+    source,
+    text: '',
+    bytesRead: 0,
+    maximumBytes: DEFAULT_TEXT_PREVIEW_BYTES,
+    truncated: false,
+  });
+}
+
 function createUnusedRemovalWorkflow(): StubRemovalWorkflow {
   const source = createSource('unused-removal-source', 'Unused removal source');
 
@@ -247,6 +289,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
       pageSize: 2,
@@ -289,6 +332,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -320,6 +364,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -351,6 +396,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -394,6 +440,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: indexingWorkflow,
     });
@@ -447,6 +494,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: removalWorkflow,
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -483,6 +531,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: browsingWorkflow,
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -526,6 +575,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: searchWorkflow,
       openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -568,6 +618,7 @@ describe('LibraryWorkspace', () => {
       browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
       searchIndexedEntries: createUnusedSearchWorkflow(),
       openIndexedEntry: openingWorkflow,
+      previewIndexedTextEntry: createUnusedPreviewWorkflow(),
       removeLibrarySource: createUnusedRemovalWorkflow(),
       indexLibrarySource: createUnusedIndexingWorkflow(),
     });
@@ -580,6 +631,54 @@ describe('LibraryWorkspace', () => {
     await expect(workspace.openEntry(input)).resolves.toEqual(result);
 
     expect(openingWorkflow.calls).toEqual([input]);
+  });
+
+  it('previews indexed text entries through the workspace facade', async () => {
+    const source = createSource('tauri-directory:documents', 'Documents');
+
+    const entry = createFileEntry({
+      id: 'entry-notes',
+      sourceId: source.id,
+      name: 'notes.txt',
+      relativePath: 'Notes/notes.txt',
+      extension: 'txt',
+      mimeType: 'text/plain',
+      category: 'text',
+      kind: 'file',
+    });
+
+    const result: PreviewIndexedTextEntryResult = {
+      entry,
+      source,
+      text: 'FilePilot local preview',
+      bytesRead: 23,
+      maximumBytes: 4_096,
+      truncated: false,
+    };
+
+    const previewWorkflow = new StubIndexedTextPreviewWorkflow(result);
+
+    const workspace = new LibraryWorkspace({
+      librarySourceRepository: new MemoryListingRepository(),
+      connectLibrarySource: new StubConnectionWorkflow({
+        status: 'cancelled',
+      }),
+      browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
+      searchIndexedEntries: createUnusedSearchWorkflow(),
+      openIndexedEntry: createUnusedOpeningWorkflow(),
+      previewIndexedTextEntry: previewWorkflow,
+      removeLibrarySource: createUnusedRemovalWorkflow(),
+      indexLibrarySource: createUnusedIndexingWorkflow(),
+    });
+
+    const input: PreviewIndexedTextEntryInput = {
+      entryId: entry.id,
+      maximumBytes: 4_096,
+    };
+
+    await expect(workspace.previewTextEntry(input)).resolves.toEqual(result);
+
+    expect(previewWorkflow.calls).toEqual([input]);
   });
 
   it('rejects invalid repository page sizes', () => {
@@ -597,6 +696,7 @@ describe('LibraryWorkspace', () => {
           browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           searchIndexedEntries: createUnusedSearchWorkflow(),
           openIndexedEntry: createUnusedOpeningWorkflow(),
+          previewIndexedTextEntry: createUnusedPreviewWorkflow(),
           removeLibrarySource: createUnusedRemovalWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 0,
@@ -611,6 +711,7 @@ describe('LibraryWorkspace', () => {
           browseLibraryDirectory: createUnusedDirectoryBrowsingWorkflow(),
           searchIndexedEntries: createUnusedSearchWorkflow(),
           openIndexedEntry: createUnusedOpeningWorkflow(),
+          previewIndexedTextEntry: createUnusedPreviewWorkflow(),
           removeLibrarySource: createUnusedRemovalWorkflow(),
           indexLibrarySource: createUnusedIndexingWorkflow(),
           pageSize: 501,

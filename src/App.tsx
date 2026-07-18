@@ -29,11 +29,13 @@ import type { AppView } from '@/app/navigation/app-view';
 import type { FileEntry } from '@/core/entities/file-entry';
 import type { LibrarySource } from '@/core/entities/library-source';
 import {
+  useDuplicateAnalysis,
   useIndexedEntryOperations,
   useIndexedEntrySearch,
   useIndexedFileBrowser,
   useIndexedTextPreview,
   useLibraryWorkspace,
+  type DuplicateAnalysisViewState,
   type IndexedEntryOperationViewState,
   type IndexedEntrySearchViewState,
   type IndexedFileBrowserViewState,
@@ -56,7 +58,8 @@ const VIEW_CONTENT: Record<Exclude<AppView, 'overview' | 'library'>, ViewContent
   duplicates: {
     eyebrow: 'Storage cleanup',
     title: 'Duplicate files',
-    description: 'Detect identical and visually similar files across connected sources.',
+    description:
+      'Detect exact content duplicates across connected folders using local SHA-256 analysis.',
     emptyTitle: 'No files available to compare',
     emptyDescription: 'Add at least one folder before running a duplicate-file analysis.',
     icon: Copy,
@@ -131,6 +134,8 @@ function App(): React.JSX.Element {
   const entryOperations = useIndexedEntryOperations(libraryWorkspace);
 
   const indexedSearch = useIndexedEntrySearch(libraryWorkspace);
+
+  const duplicateAnalysis = useDuplicateAnalysis(libraryWorkspace);
 
   const libraryStatistics = useMemo(
     () =>
@@ -266,6 +271,15 @@ function App(): React.JSX.Element {
             onAddFolder={handleAddFolder}
             onIndexSource={handleIndexSource}
             onRemoveSource={handleRemoveSource}
+          />
+        ) : activeView === 'duplicates' ? (
+          <DuplicatesPage
+            analysis={duplicateAnalysis}
+            sources={sources}
+            indexedFileCount={libraryStatistics.fileCount}
+            onOpenLibrary={() => {
+              setActiveView('library');
+            }}
           />
         ) : (
           <EmptyWorkspacePage content={VIEW_CONTENT[activeView]} />
@@ -1647,6 +1661,305 @@ function IndexedFileBrowser({
         }}
       />
     </section>
+  );
+}
+
+interface DuplicatesPageProps {
+  analysis: DuplicateAnalysisViewState;
+  sources: readonly LibrarySource[];
+  indexedFileCount: number;
+  onOpenLibrary: () => void;
+}
+
+function DuplicatesPage({
+  analysis,
+  sources,
+  indexedFileCount,
+  onOpenLibrary,
+}: DuplicatesPageProps): React.JSX.Element {
+  const sourceNamesById = useMemo(
+    () => new Map(sources.map((source) => [source.id, source.name] as const)),
+    [sources],
+  );
+
+  const progress = analysis.progress;
+
+  const progressPercentage =
+    progress === null
+      ? 0
+      : progress.phase === 'complete'
+        ? 100
+        : progress.candidateFileCount > 0
+          ? Math.min(
+              100,
+              Math.round((progress.processedFileCount / progress.candidateFileCount) * 100),
+            )
+          : 0;
+
+  const progressTitle =
+    progress?.phase === 'loading'
+      ? 'Loading indexed file metadata'
+      : progress?.phase === 'complete'
+        ? 'Duplicate analysis complete'
+        : 'Calculating local SHA-256 hashes';
+
+  const result = analysis.result;
+  const hasIndexedFiles = indexedFileCount > 0;
+
+  return (
+    <div className="workspace duplicates">
+      <header className="workspace__header workspace__header--actions">
+        <div>
+          <span>Storage cleanup</span>
+          <h1>Duplicate files</h1>
+          <p>
+            Find files with exactly identical content across connected folders. File contents remain
+            on this device; FilePilot stores only local SHA-256 values in its index.
+          </p>
+        </div>
+
+        <div className="duplicates__header-actions">
+          {analysis.hasCompletedAnalysis && !analysis.isAnalyzing ? (
+            <Button variant="ghost" onClick={analysis.clearAnalysis}>
+              Clear results
+            </Button>
+          ) : null}
+
+          {analysis.isAnalyzing ? (
+            <Button variant="secondary" onClick={analysis.cancelAnalysis}>
+              <X aria-hidden="true" />
+              Cancel analysis
+            </Button>
+          ) : (
+            <Button
+              variant="primary"
+              disabled={!hasIndexedFiles}
+              onClick={() => {
+                void analysis.analyzeDuplicates();
+              }}
+            >
+              <RefreshCw aria-hidden="true" />
+              {analysis.hasCompletedAnalysis ? 'Analyze again' : 'Analyze duplicates'}
+            </Button>
+          )}
+        </div>
+      </header>
+
+      {analysis.error ? (
+        <div className="workspace__feedback workspace__feedback--error" role="alert">
+          {analysis.error}
+        </div>
+      ) : null}
+
+      {!hasIndexedFiles && !analysis.isAnalyzing ? (
+        <section className="workspace__empty">
+          <span className="workspace__empty-icon" aria-hidden="true">
+            <Copy />
+          </span>
+
+          <h2>No indexed files available</h2>
+          <p>
+            Connect and index at least one folder before running an exact duplicate-file analysis.
+          </p>
+
+          <Button variant="primary" onClick={onOpenLibrary}>
+            <FolderOpen aria-hidden="true" />
+            Open Library
+          </Button>
+        </section>
+      ) : null}
+
+      {hasIndexedFiles && !analysis.isAnalyzing && result === null ? (
+        <section className="duplicates__intro">
+          <span className="duplicates__intro-icon" aria-hidden="true">
+            <ShieldCheck />
+          </span>
+
+          <div>
+            <span>Local and private</span>
+            <h2>Ready to compare {indexedFileCount.toLocaleString()} indexed files</h2>
+            <p>
+              FilePilot first skips unique file sizes, then streams only possible matches through a
+              fixed-memory native SHA-256 worker. No file content is uploaded.
+            </p>
+          </div>
+
+          <Button
+            variant="primary"
+            onClick={() => {
+              void analysis.analyzeDuplicates();
+            }}
+          >
+            <Copy aria-hidden="true" />
+            Start analysis
+          </Button>
+        </section>
+      ) : null}
+
+      {analysis.isAnalyzing ? (
+        <section className="duplicates__progress" aria-live="polite">
+          <div className="duplicates__progress-heading">
+            <span className="workspace__loading-indicator" aria-hidden="true" />
+
+            <div>
+              <h2>{progressTitle}</h2>
+
+              <p>
+                {progress?.phase === 'loading'
+                  ? 'Reading locally indexed metadata and locating files with matching sizes.'
+                  : `${(progress?.processedFileCount ?? 0).toLocaleString()} of ${(
+                      progress?.candidateFileCount ?? 0
+                    ).toLocaleString()} candidate files processed.`}
+              </p>
+            </div>
+
+            <strong>{progressPercentage}%</strong>
+          </div>
+
+          <div
+            className="duplicates__progress-track"
+            role="progressbar"
+            aria-label="Duplicate analysis progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progressPercentage}
+          >
+            <span style={{ width: `${progressPercentage}%` }} />
+          </div>
+
+          <dl className="duplicates__progress-details">
+            <div>
+              <dt>New hashes</dt>
+              <dd>{(progress?.hashedFileCount ?? 0).toLocaleString()}</dd>
+            </div>
+
+            <div>
+              <dt>Reused hashes</dt>
+              <dd>{(progress?.reusedHashCount ?? 0).toLocaleString()}</dd>
+            </div>
+
+            <div>
+              <dt>Candidate files</dt>
+              <dd>{(progress?.candidateFileCount ?? 0).toLocaleString()}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {result !== null && !analysis.isAnalyzing ? (
+        <>
+          <section className="duplicates__stats" aria-label="Duplicate analysis summary">
+            <StatCard
+              label="Duplicate groups"
+              value={result.duplicateGroupCount.toLocaleString()}
+              icon={Copy}
+            />
+
+            <StatCard
+              label="Files in duplicate groups"
+              value={result.duplicateFileCount.toLocaleString()}
+              icon={FileIcon}
+            />
+
+            <StatCard
+              label="Potentially reclaimable"
+              value={formatStorageSize(result.reclaimableBytes)}
+              icon={HardDrive}
+            />
+
+            <StatCard
+              label="Files hashed this run"
+              value={result.hashedFileCount.toLocaleString()}
+              icon={ShieldCheck}
+            />
+          </section>
+
+          {result.groups.length === 0 ? (
+            <section className="workspace__empty duplicates__empty-result">
+              <span className="workspace__empty-icon" aria-hidden="true">
+                <ShieldCheck />
+              </span>
+
+              <h2>No exact duplicates found</h2>
+              <p>
+                FilePilot compared {result.candidateFileCount.toLocaleString()} possible matches and
+                found no files with identical SHA-256 content.
+              </p>
+            </section>
+          ) : (
+            <section className="duplicates__results" aria-label="Exact duplicate groups">
+              <div className="duplicates__results-heading">
+                <div>
+                  <span>Exact matches</span>
+                  <h2>
+                    {result.duplicateGroupCount.toLocaleString()}{' '}
+                    {result.duplicateGroupCount === 1 ? 'group' : 'groups'} found
+                  </h2>
+                </div>
+
+                <p>
+                  Keeping one file from each group could reclaim approximately{' '}
+                  <strong>{formatStorageSize(result.reclaimableBytes)}</strong>.
+                </p>
+              </div>
+
+              <div className="duplicates__group-list">
+                {result.groups.map((group, groupIndex) => (
+                  <article
+                    key={`${group.hash.value}:${group.sizeBytes}`}
+                    className="duplicate-group"
+                  >
+                    <header className="duplicate-group__header">
+                      <span className="duplicate-group__icon" aria-hidden="true">
+                        <Copy />
+                      </span>
+
+                      <div className="duplicate-group__title">
+                        <span>Duplicate group {groupIndex + 1}</span>
+                        <h3>
+                          {group.fileCount.toLocaleString()} identical files ·{' '}
+                          {formatStorageSize(group.sizeBytes)} each
+                        </h3>
+                      </div>
+
+                      <div className="duplicate-group__summary">
+                        <strong>{formatStorageSize(group.reclaimableBytes)}</strong>
+                        <span>reclaimable</span>
+                      </div>
+                    </header>
+
+                    <div className="duplicate-group__hash">
+                      <span>SHA-256</span>
+                      <code title={group.hash.value}>{group.hash.value.slice(0, 16)}…</code>
+                    </div>
+
+                    <ul className="duplicate-group__files">
+                      {group.entries.map((entry) => (
+                        <li key={entry.id}>
+                          <span className="duplicate-group__file-icon" aria-hidden="true">
+                            <FileIcon />
+                          </span>
+
+                          <div className="duplicate-group__file-details">
+                            <strong>{entry.name}</strong>
+                            <span>{entry.relativePath}</span>
+                          </div>
+
+                          <div className="duplicate-group__source">
+                            <span>Folder</span>
+                            <strong>{sourceNamesById.get(entry.sourceId) ?? entry.sourceId}</strong>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      ) : null}
+    </div>
   );
 }
 

@@ -1,4 +1,5 @@
 import {
+  AnalyzeDuplicateFiles,
   BrowseLibraryDirectory,
   BuildIndexedFileEntry,
   ConnectLibrarySource,
@@ -16,6 +17,7 @@ import {
   TauriDirectoryScanAdapter,
   TauriDirectorySelectionAdapter,
   TauriIndexedEntryContentAdapter,
+  TauriIndexedEntryHashAdapter,
   TauriIndexedEntryOpenAdapter,
   TauriLibrarySourceAccessPreparer,
   TauriNativePathRegistry,
@@ -46,6 +48,8 @@ const indexedEntryOpenAdapter = new TauriIndexedEntryOpenAdapter(nativePathRegis
 
 const indexedEntryContentAdapter = new TauriIndexedEntryContentAdapter(nativePathRegistry);
 
+const indexedEntryHashAdapter = new TauriIndexedEntryHashAdapter(nativePathRegistry);
+
 const openIndexedEntry = new OpenIndexedEntry({
   fileEntryRepository,
   librarySourceRepository,
@@ -58,6 +62,13 @@ const previewIndexedTextEntry = new PreviewIndexedTextEntry({
   librarySourceRepository,
   sourceAccessPreparer,
   indexedEntryContentAdapter,
+});
+
+const analyzeDuplicateFiles = new AnalyzeDuplicateFiles({
+  fileEntryRepository,
+  librarySourceRepository,
+  sourceAccessPreparer,
+  indexedEntryHashAdapter,
 });
 
 const buildIndexedFileEntry = new BuildIndexedFileEntry();
@@ -91,6 +102,7 @@ const removeLibrarySource = new RemoveLibrarySource({
 });
 
 export const libraryWorkspace = new LibraryWorkspace({
+  analyzeDuplicateFiles,
   browseLibraryDirectory,
   connectLibrarySource,
   indexLibrarySource,

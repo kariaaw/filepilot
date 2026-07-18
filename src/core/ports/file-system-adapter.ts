@@ -228,3 +228,28 @@ export interface IndexedEntryContentAdapter {
     maximumBytes: number,
   ): Promise<IndexedEntryContentReadResult>;
 }
+
+/**
+ * Verified SHA-256 result returned after streaming one local indexed file.
+ */
+export interface IndexedEntryHashResult {
+  algorithm: 'sha256';
+  value: string;
+  sizeBytes: number;
+}
+
+/**
+ * Minimal capability for hashing one indexed local file.
+ *
+ * Implementations must stream file content locally and must not upload,
+ * retain, or expose operating-system paths.
+ */
+export interface IndexedEntryHashAdapter {
+  readonly platform: LibrarySourcePlatform;
+
+  hashEntry(
+    accessKey: string,
+    relativePath: string,
+    signal?: AbortSignal,
+  ): Promise<IndexedEntryHashResult>;
+}

@@ -11,6 +11,7 @@ import {
   FolderOpen,
   FolderPlus,
   HardDrive,
+  Info,
   RefreshCw,
   Search,
   Settings,
@@ -377,6 +378,13 @@ function IndexedSearchResultsPage({
     [sources],
   );
 
+  const [selectedEntry, setSelectedEntry] = useState<FileEntry | null>(null);
+
+  const selectedEntrySource =
+    selectedEntry === null
+      ? null
+      : (sources.find((source) => source.id === selectedEntry.sourceId) ?? null);
+
   const isWaitingForResults = search.isSearching || !search.hasCompletedSearch;
 
   return (
@@ -513,6 +521,16 @@ function IndexedSearchResultsPage({
                           <IconButton
                             size="small"
                             variant="ghost"
+                            icon={<Info />}
+                            aria-label={`View details for ${entry.name}`}
+                            onClick={() => {
+                              setSelectedEntry(entry);
+                            }}
+                          />
+
+                          <IconButton
+                            size="small"
+                            variant="ghost"
                             icon={<ExternalLink />}
                             aria-label={`Open ${entry.name}`}
                             disabled={
@@ -550,6 +568,15 @@ function IndexedSearchResultsPage({
           </footer>
         </section>
       )}
+
+      <IndexedEntryDetailsDialog
+        entry={selectedEntry}
+        source={selectedEntrySource}
+        operations={operations}
+        onClose={() => {
+          setSelectedEntry(null);
+        }}
+      />
     </div>
   );
 }
@@ -580,6 +607,260 @@ function IndexedEntryOperationFeedback({
     >
       {operations.error ?? operations.notice}
     </p>
+  );
+}
+
+interface IndexedEntryDetailsDialogProps {
+  entry: FileEntry | null;
+  source: LibrarySource | null;
+  operations: IndexedEntryOperationViewState;
+  onClose: () => void;
+}
+
+function formatMetadataLabel(value: string): string {
+  return value
+    .split('-')
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
+}
+
+function IndexedEntryDetailsDialog({
+  entry,
+  source,
+  operations,
+  onClose,
+}: IndexedEntryDetailsDialogProps): React.JSX.Element | null {
+  useEffect(() => {
+    if (!entry) {
+      return;
+    }
+
+    const handleEscapeKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscapeKey);
+
+    return () => {
+      window.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [entry, onClose]);
+
+  if (!entry) {
+    return null;
+  }
+
+  const EntryIcon = entry.kind === 'directory' ? Folder : FileIcon;
+  const isOperationPending = operations.isPending(entry.id);
+  const isUnavailable = entry.availability !== 'available';
+
+  return (
+    <div
+      className="indexed-entry-details__backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="indexed-entry-details"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="indexed-entry-details-title"
+        aria-describedby="indexed-entry-details-description"
+      >
+        <header className="indexed-entry-details__header">
+          <div className="indexed-entry-details__heading">
+            <span className="indexed-entry-details__icon" data-kind={entry.kind} aria-hidden="true">
+              <EntryIcon />
+            </span>
+
+            <div>
+              <span className="indexed-entry-details__eyebrow">Indexed entry details</span>
+
+              <h2 id="indexed-entry-details-title">{entry.name}</h2>
+
+              <p id="indexed-entry-details-description">
+                Metadata stored privately in FilePilot&apos;s local index.
+              </p>
+            </div>
+          </div>
+
+          <Button size="small" variant="ghost" autoFocus onClick={onClose}>
+            <X aria-hidden="true" />
+            Close
+          </Button>
+        </header>
+
+        <div className="indexed-entry-details__body">
+          <div className="indexed-entry-details__privacy-note">
+            <Info aria-hidden="true" />
+
+            <p>This view reads indexed metadata only. File contents are not uploaded or opened.</p>
+          </div>
+
+          <dl className="indexed-entry-details__metadata">
+            <div>
+              <dt>Source</dt>
+              <dd>{source?.name ?? 'Unknown source'}</dd>
+            </div>
+
+            <div>
+              <dt>Entry type</dt>
+              <dd>{formatEntryType(entry)}</dd>
+            </div>
+
+            <div className="indexed-entry-details__metadata-item--wide">
+              <dt>Source location</dt>
+              <dd>
+                <code>{source?.displayPath ?? 'Unavailable'}</code>
+              </dd>
+            </div>
+
+            <div className="indexed-entry-details__metadata-item--wide">
+              <dt>Indexed path</dt>
+              <dd>
+                <code>{entry.relativePath}</code>
+              </dd>
+            </div>
+
+            <div>
+              <dt>Category</dt>
+              <dd>{formatMetadataLabel(entry.category)}</dd>
+            </div>
+
+            <div>
+              <dt>Size</dt>
+              <dd>{formatStorageSize(entry.sizeBytes)}</dd>
+            </div>
+
+            <div>
+              <dt>Extension</dt>
+              <dd>{entry.extension ? `.${entry.extension}` : 'None'}</dd>
+            </div>
+
+            <div>
+              <dt>MIME type</dt>
+              <dd>{entry.mimeType ?? 'Unknown'}</dd>
+            </div>
+
+            <div>
+              <dt>Availability</dt>
+              <dd>{formatMetadataLabel(entry.availability)}</dd>
+            </div>
+
+            <div>
+              <dt>Security</dt>
+              <dd>{formatMetadataLabel(entry.securityLevel)}</dd>
+            </div>
+
+            <div>
+              <dt>Created</dt>
+              <dd>
+                <time
+                  dateTime={
+                    entry.createdAtMs === null
+                      ? undefined
+                      : new Date(entry.createdAtMs).toISOString()
+                  }
+                >
+                  {formatEntryModifiedDate(entry.createdAtMs)}
+                </time>
+              </dd>
+            </div>
+
+            <div>
+              <dt>Modified</dt>
+              <dd>
+                <time
+                  dateTime={
+                    entry.modifiedAtMs === null
+                      ? undefined
+                      : new Date(entry.modifiedAtMs).toISOString()
+                  }
+                >
+                  {formatEntryModifiedDate(entry.modifiedAtMs)}
+                </time>
+              </dd>
+            </div>
+
+            <div>
+              <dt>First indexed</dt>
+              <dd>
+                <time dateTime={new Date(entry.indexedAtMs).toISOString()}>
+                  {formatEntryModifiedDate(entry.indexedAtMs)}
+                </time>
+              </dd>
+            </div>
+
+            <div>
+              <dt>Last confirmed</dt>
+              <dd>
+                <time dateTime={new Date(entry.lastSeenAtMs).toISOString()}>
+                  {formatEntryModifiedDate(entry.lastSeenAtMs)}
+                </time>
+              </dd>
+            </div>
+
+            <div className="indexed-entry-details__metadata-item--wide">
+              <dt>Tags</dt>
+              <dd>
+                {entry.tags.length === 0 ? (
+                  'No tags'
+                ) : (
+                  <ul className="indexed-entry-details__tags" aria-label="Indexed entry tags">
+                    {entry.tags.map((tag) => (
+                      <li key={tag}>{tag}</li>
+                    ))}
+                  </ul>
+                )}
+              </dd>
+            </div>
+
+            <div className="indexed-entry-details__metadata-item--wide">
+              <dt>Content hash</dt>
+              <dd>
+                {entry.contentHash === null ? (
+                  'Not calculated'
+                ) : (
+                  <code>
+                    {entry.contentHash.algorithm.toUpperCase()}: {entry.contentHash.value}
+                  </code>
+                )}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <footer className="indexed-entry-details__actions" aria-busy={isOperationPending}>
+          <Button
+            variant="secondary"
+            disabled={isUnavailable || isOperationPending}
+            onClick={() => {
+              void operations.revealEntry(entry);
+            }}
+          >
+            <Eye aria-hidden="true" />
+            Reveal in file manager
+          </Button>
+
+          <Button
+            variant="primary"
+            disabled={isUnavailable || isOperationPending}
+            onClick={() => {
+              void operations.openEntry(entry);
+            }}
+          >
+            <ExternalLink aria-hidden="true" />
+            Open
+          </Button>
+        </footer>
+      </section>
+    </div>
   );
 }
 
@@ -1044,6 +1325,8 @@ function IndexedFileBrowser({
 }: IndexedFileBrowserProps): React.JSX.Element {
   const sourceName = source?.name ?? 'Indexed files';
 
+  const [selectedEntry, setSelectedEntry] = useState<FileEntry | null>(null);
+
   return (
     <section className="indexed-browser" aria-label={`Indexed files for ${sourceName}`}>
       <header className="indexed-browser__header">
@@ -1219,6 +1502,16 @@ function IndexedFileBrowser({
                         <IconButton
                           size="small"
                           variant="ghost"
+                          icon={<Info />}
+                          aria-label={`View details for ${entry.name}`}
+                          onClick={() => {
+                            setSelectedEntry(entry);
+                          }}
+                        />
+
+                        <IconButton
+                          size="small"
+                          variant="ghost"
                           icon={<ExternalLink />}
                           aria-label={`Open ${entry.name}`}
                           disabled={
@@ -1257,6 +1550,15 @@ function IndexedFileBrowser({
           indexed entries
         </footer>
       ) : null}
+
+      <IndexedEntryDetailsDialog
+        entry={selectedEntry}
+        source={source}
+        operations={operations}
+        onClose={() => {
+          setSelectedEntry(null);
+        }}
+      />
     </section>
   );
 }

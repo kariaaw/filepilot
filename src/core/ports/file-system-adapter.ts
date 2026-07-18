@@ -188,3 +188,14 @@ export type DirectorySelectionAdapter = Pick<FileSystemAdapter, 'platform' | 'se
  * Minimal file-system capability required by directory-indexing workflows.
  */
 export type DirectoryScanAdapter = Pick<FileSystemAdapter, 'platform' | 'scanDirectory'>;
+
+/**
+ * Minimal capability for opening or revealing an indexed local entry.
+ *
+ * Implementations resolve the opaque source access key internally so native
+ * operating-system paths never enter the application or presentation layers.
+ */
+export interface IndexedEntryOpenAdapter {
+  openEntry(accessKey: string, relativePath: string): Promise<void>;
+  revealEntry(accessKey: string, relativePath: string): Promise<void>;
+}

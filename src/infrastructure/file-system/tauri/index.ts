@@ -17,3 +17,11 @@ export {
 export { TauriLibrarySourceAccessPreparer } from './tauri-library-source-access-preparer';
 
 export { TauriNativePathRegistry } from './tauri-native-path-registry';
+
+export {
+  TauriIndexedEntryOpenAdapter,
+  type NativeItemRevealer,
+  type NativePathJoiner,
+  type NativePathOpener,
+  type TauriIndexedEntryOpenAdapterDependencies,
+} from './tauri-indexed-entry-open-adapter';
